@@ -19,8 +19,20 @@ my %greets;
 my %memos;
 my %commands;
 
-%commands = (nom => \&cmd_nom);
-
+%commands = (	nom => \&cmd_nom,
+				ver => \&cmd_ver,
+				say => \&cmd_say,
+				do => \&cmd_do,
+				telesay => \&cmd_telesay,
+				crickets => \&cmd_crickets,
+				coolkids => \&cmd_coolkids,
+				getitoff => \&cmd_getitoff,
+				dance => \&cmd_dance,
+				'isskynet()' => \&cmd_skynet,
+				om => \&cmd_om,
+				autogreet => \&cmd_autogreet,
+				memo => \&cmd_memo
+				help => \&cmd_help);
 
 Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1);
@@ -353,37 +365,27 @@ sub cmd_nom {
 	}
 }
 
-sub parse_command {
-	my ($server, $wind, $target, $nick, $cmd, $args) = @_;
-	if (defined $commands{$cmd}) {
-		$commands{$cmd}->($server, $wind, $target, $nick, $args);
+sub cmd_ver {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummysay($server, $target, "Gummybot is currently version $gummyver.");
+}
+
+sub cmd_say {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
+		gummysay($server, $target, $args);
+	}
+}
+sub cmd_do {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
+		gummydo($server, $target, $args);
 	}
 }
 
-sub gummymain {
-	my ($server, $wind, $target, $nick, $cmd, $args) = @_; 
-	my @params = split(/\s+/, $args);
-
-	$cmd = lc($cmd);
-
-	if ($gummyenabled == 0) {
-		if ($cmd eq "on") {
-			if (isgummyop($server,$target,$nick)) {
-				enablegummy();
-				floodreset("nick",$target);
-			}
-		}
-	}
-	elsif ($cmd eq "ver") {
-		gummysay($server, $target, "Gummybot is currently version $gummyver.");
-	}
-	elsif ($cmd eq "say" && Irssi::settings_get_bool('Gummy_AllowRemote')) {
-		gummysay($server, $target, $args);
-	}
-	elsif ($cmd eq "do" && Irssi::settings_get_bool('Gummy_AllowRemote')) {
-		gummydo($server, $target, $args);
-	}
-	elsif ($cmd eq "telesay" && Irssi::settings_get_bool('Gummy_AllowRemote')) {
+sub cmd_telesay {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
 		my $newtarget;
 		($newtarget, $args) = split(/\s+/,$args,2);
 		my $found=0;
@@ -399,7 +401,11 @@ sub gummymain {
 			gummydo($server, $target, "blinks. He's not in that channel.");
 		}
 	}
-	elsif ($cmd eq "teledo" && Irssi::settings_get_bool('Gummy_AllowRemote')) {
+}
+
+sub cmd_teledo {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
 		my $newtarget;
 		($newtarget, $args) = split(/\s+/,$args,2);
 		my $found=0;
@@ -415,77 +421,180 @@ sub gummymain {
 			gummydo($server, $target, "blinks. He's not in that channel.");
 		}
 	}
-	elsif ($cmd eq "crickets") {
-		gummydo($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
+}
+
+sub cmd_crickets {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummydo($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
+}
+
+sub cmd_coolkids {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if (lc($params[0]) eq "awwyeah") {
+		docoolkids($server, $target, $target, $nick);
 	}
-	elsif ($cmd eq "coolkids") {
-		if (lc($params[0]) eq "awwyeah") {
-			docoolkids($server, $target, $target, $nick);
+	elsif ($params[0]) {
+		docoolkids($server, $params[0], $nick, $nick);
+		if ($server->ischannel($target)) {
+			gummydo($server, $target, "hands out shades to all of the cool ponies in $params[0].");
 		}
-		elsif ($params[0]) {
-			docoolkids($server, $params[0], $nick, $nick);
-			if ($server->ischannel($target)) {
-				gummydo($server, $target, "hands out shades to all of the cool ponies in $params[0].");
-			}
+	}
+	else {
+		docoolkids($server, $target, $nick, $nick);
+		if ($server->ischannel($target)) {
+			gummydo($server, $target, "hands out shades to all of the cool ponies in the channel.");
+		}
+	}
+}
+
+sub cmd_getitoff {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (defined $nomnick) {
+		gummydo($server, $target, "drops dejectedly off of ${nomnick}'s tail.");
+		$nomnick = undef;
+	}
+	else {
+		gummydo($server, $target, "blinks absently; his already empty maw hanging open slightly.");
+	}	
+}
+
+sub cmd_dance {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummydo($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
+}
+
+sub cmd_isskynet {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummysay($server, $target, "89");
+	gummysay($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
+}
+
+sub cmd_om {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if (not @params) {
+		if (not %funstuff) {
+			loadfunstuff();
+		}
+		my @omcache =@{$funstuff{buddha}};
+		my $buddha = $omcache[rand(@omcache)];
+		gummysay($server, $target, "Gummybuddha says: $buddha");
+	}
+	elsif (lc($params[0]) eq "add") {
+		if (flood("file","omadd",Irssi::settings_get_time('Gummy_OmAddFloodLimit')/1000)) {
+			open OMADD, ">> ".getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
+			print OMADD "${nick}\@${target}: $args\n";
+			close OMADD;
+			gummysay($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
 		}
 		else {
-			docoolkids($server, $target, $nick, $nick);
-			if ($server->ischannel($target)) {
-				gummydo($server, $target, "hands out shades to all of the cool ponies in the channel.");
-			}
+			gummysay($server,$target,"Please wait longer before submitting another suggestion. No more than once a minute please.");
 		}
 	}
-	elsif ($cmd eq "getitoff") {
-		if (defined $nomnick) {
-			gummydo($server, $target, "drops dejectedly off of ${nomnick}'s tail.");
-			$nomnick = undef;
+	elsif (lc($params[0]) eq "nom") {
+		gummydo($server,$target,"meditates on the wisdom of the nom.");
+	}
+	elsif (lc($params[0]) eq "skippy") {
+		if (not %funstuff) {
+			loadfunstuff();
+		}
+		my @omcache =@{$funstuff{skippy}};
+		my $skippy = $omcache[rand(@omcache)];
+		gummysay($server, $target, "The wise Skippy said: $skippy");
+	}
+	else {
+		gummydo($server,$target,"blinks at you in confusion. Did you mean to nom?");
+	}
+}
+
+sub cmd_autogreet {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
+		my $greetnick = lc($nick);
+		if ($args eq "") {
+			delete $greets{$greetnick};
+			write_greets();
+			gummydo($server,$target, "strikes your greeting from his databanks.");
 		}
 		else {
-			gummydo($server, $target, "blinks absently; his already empty maw hanging open slightly.");
-		}	
-	}
-	elsif ($cmd eq "dance" && Irssi::settings_get_bool('Gummy_AllowRemote')) {
-		gummydo($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
-	}
-	elsif ($cmd eq "isskynet()") {
-		gummysay($server, $target, "89");
-	        gummysay($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
-	}
-	elsif ($cmd eq "om") {
-		if (not @params) {
-			if (not %funstuff) {
-				loadfunstuff();
-			}
-			my @omcache =@{$funstuff{buddha}};
-			my $buddha = $omcache[rand(@omcache)];
-			gummysay($server, $target, "Gummybuddha says: $buddha");
+			$greets{$greetnick} = $args;
+			write_greets();
+			gummydo($server,$target, "pauses breifly as the HDD light blinks in his eyes. Saved!");
 		}
-		elsif (lc($params[0]) eq "add") {
-			if (flood("file","omadd",Irssi::settings_get_time('Gummy_OmAddFloodLimit')/1000)) {
-				open OMADD, ">> ".getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
-				print OMADD "${nick}\@${target}: $args\n";
-				close OMADD;
-				gummysay($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
+	}
+	else {
+		gummydo($server,$target,"ignores you as autogreets have been disabled.");
+	}
+}
+
+sub cmd_memo {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
+		my $who;
+		my $timestr;
+		($who, $args) = split(/\s+/,$args,2);
+		$who = lc($who);
+		if ($args ne "" && $who ne "") {
+			if (flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
+				$timestr = strftime('%Y/%m/%d %R %Z',localtime);
+				push(@{$memos{$who}},"[$timestr] $nick: $args");
+				write_memos();
+				gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
 			}
 			else {
-				gummysay($server,$target,"Please wait longer before submitting another suggestion. No more than once a minute please.");
+				gummydo($server,$target,"looks like he's overheated. Try again later.");
 			}
-		}
-		elsif (lc($params[0]) eq "nom") {
-			gummydo($server,$target,"meditates on the wisdom of the nom.");
-		}
-		elsif (lc($params[0]) eq "skippy") {
-			if (not %funstuff) {
-				loadfunstuff();
-			}
-			my @omcache =@{$funstuff{skippy}};
-			my $skippy = $omcache[rand(@omcache)];
-			gummysay($server, $target, "The wise Skippy said: $skippy");
-		}
-		else {
-			gummydo($server,$target,"blinks at you in confusion. Did you mean to nom?");
 		}
 	}
+	else {
+		gummydo($server,$target,"ignores you as memos have been disabled.");
+	}
+}
+sub cmd_help {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+	gummysay($server,$target,"Known Commands: nom [+], om [nom, add [+]], coolkids [<channel>/awwyeah], autogreet <greeting>, memo <targetnick> <memotext>, crickets, do <action>, teledo <channel> <action>, say <text>, telesay <channel> <text>, dance, getitoff, log, ver, on (@), off (@)");
+	gummysay($server,$target,"Known substitutions: \\%mane, \\%num, \\%peep, \\%pony, \\%allpony \\%critter.");
+}
+
+sub cmd_on {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if ($gummyenabled == 0) {
+		if ($cmd eq "on") {
+			if (isgummyop($server,$target,$nick)) {
+				enablegummy();
+				floodreset("nick",$target);
+			}
+		}
+	}
+}
+
+
+#sub cmd_ {
+#	my ($server, $wind, $target, $nick, $args) = @_;
+#}
+
+
+sub parse_command {
+	my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
+	$cmd = lc($cmd);
+	if (defined $commandlist->{$cmd}) {
+		$commandlist->{$cmd}->($server, $wind, $target, $nick, $args);
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+sub gummymain {
+	my ($server, $wind, $target, $nick, $cmd, $args) = @_; 
+	my @params = split(/\s+/, $args);
+
+	$cmd = lc($cmd);
+
+
 	elsif ($cmd eq "log") {
 		if (flood("feat","log",Irssi::settings_get_time('Gummy_LogFloodLimit')/1000)) {
 			my $logtext;
@@ -496,55 +605,6 @@ sub gummymain {
 		else {
 			gummydo($server,$nick,"looks like he's discharged from the last log emission.");
 		}
-	}
-	elsif ($cmd eq "autogreet") {
-		if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-			my $greetnick = lc($nick);
-			if ($args eq "") {
-				delete $greets{$greetnick};
-				write_greets();
-				gummydo($server,$target, "strikes your greeting from his databanks.");
-			}
-			else {
-				$greets{$greetnick} = $args;
-				write_greets();
-				gummydo($server,$target, "pauses breifly as the HDD light blinks in his eyes. Saved!");
-			}
-		}
-		else {
-			gummydo($server,$target,"ignores you as autogreets have been disabled.");
-		}
-		
-	}
-	elsif ($cmd eq "memo") {
-		if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-			my $who;
-			my $timestr;
-			($who, $args) = split(/\s+/,$args,2);
-			$who = lc($who);
-			if ($args ne "" && $who ne "") {
-				if (flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-					$timestr = strftime('%Y/%m/%d %R %Z',localtime);
-					push(@{$memos{$who}},"[$timestr] $nick: $args");
-					write_memos();
-					gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
-				}
-				else {
-					gummydo($server,$target,"looks like he's overheated. Try again later.");
-				}
-			}
-		}
-		else {
-			gummydo($server,$target,"ignores you as memos have been disabled.");
-		}
-	}
-	elsif ($cmd eq "help")  {
-		gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
-		gummysay($server,$target,"Known Commands: nom [+], om [nom, add [+]], coolkids [<channel>/awwyeah], autogreet <greeting>, memo <targetnick> <memotext>, crickets, do <action>, teledo <channel> <action>, say <text>, telesay <channel> <text>, dance, getitoff, log, ver, on (@), off (@)");
-		gummysay($server,$target,"Known substitutions: \\%mane, \\%num, \\%peep, \\%pony, \\%allpony \\%critter.");
-	}
-	else {
-		gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
 	}
 }
 
@@ -590,18 +650,22 @@ sub myevent {
 				gummysay($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
 			}
 		}
-		elsif (nickflood($nick,Irssi::settings_get_time('Gummy_NickFloodLimit')/1000)) {
-			if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
-				logtext("$nick PRIVMSG $data");
-				$args = dofunsubs($server, $target, $args);
-				parse_command($server, $curwind, $target, $nick, $cmd, $args);
+		if ($gummyenabled !=0) {
+			if (nickflood($nick,Irssi::settings_get_time('Gummy_NickFloodLimit')/1000)) {
+				if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
+					logtext("$nick PRIVMSG $data");
+					$args = dofunsubs($server, $target, $args);
+					if (!parse_command(\%commands,$server, $curwind, $target, $nick, $cmd, $args)) {
+						gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
+					}
+				}
+				else {
+					print("Denied! $target is flooded.");
+				}	
 			}
 			else {
-				print("Denied! $target is flooded.");
-			}	
-		}
-		else {
-			print("Denied! $nick is flooded.");
+				print("Denied! $nick is flooded.");
+			}
 		}
 	}
 }
