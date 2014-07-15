@@ -17,6 +17,9 @@ my $nomnick;
 my @scrollback;
 my %greets;
 my %memos;
+my %commands;
+
+%commands = (nom => \&cmd_nom);
 
 
 Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1);
@@ -41,7 +44,7 @@ Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m');
 Irssi::settings_add_time('GummyBot','Gummy_GreetFloodLimit','10m');
 Irssi::settings_add_time('GummyBot','Gummy_BlinkTimeout','10m');
 
-my $gummyver = "2.9.4";
+my $gummyver = "3.0.0";
 
 
 $VERSION = '1.00';
@@ -312,6 +315,50 @@ sub docoolkids {
 	}
 }
 
+sub cmd_nom {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+
+	if (not @params) {
+		if (defined $nomnick) {
+			gummydo($server,$target,"drops off of ${nomnick} and noms onto ${nick}'s tail.");
+		}
+		else {
+			gummydo($server,$target,"noms onto ${nick}'s tail.");
+		}
+		$nomnick = $nick;
+	} 
+	else {
+		if (lc($args) eq "gummybot" || lc($args) eq "gummy") {
+			if (defined $nomnick) {
+				gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
+			}
+			else {
+				gummydo($server,$target, "at ${nick}'s command the serpent latches on to it's own tail and forms Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
+			}
+			$nomnick = $server->{nick};
+		}
+		elsif (lc($args) eq lc($nomnick) && defined $nomnick) {
+			gummydo($server,$target,"does a quick triple somersault into a half twist and lands perfectly back onto ${nomnick}'s tail.");
+		}
+		else {
+			if (defined $nomnick) {
+				gummydo($server,$target, "leaps from $nomnick at ${nick}'s command and noms onto ${args}'s tail.");
+			}
+			else {
+				gummydo($server,$target, "leaps at ${nick}'s command and noms onto ${args}'s tail.");
+			}
+			$nomnick = $args;
+		}
+	}
+}
+
+sub parse_command {
+	my ($server, $wind, $target, $nick, $cmd, $args) = @_;
+	if (defined $commands{$cmd}) {
+		$commands{$cmd}->($server, $wind, $target, $nick, $args);
+	}
+}
 
 sub gummymain {
 	my ($server, $wind, $target, $nick, $cmd, $args) = @_; 
@@ -324,40 +371,6 @@ sub gummymain {
 			if (isgummyop($server,$target,$nick)) {
 				enablegummy();
 				floodreset("nick",$target);
-			}
-		}
-	}
-	elsif ($cmd eq "nom") {
-		if (not @params) {
-			if (defined $nomnick) {
-				gummydo($server,$target,"drops off of ${nomnick} and noms onto ${nick}'s tail.");
-			}
-			else {
-				gummydo($server,$target,"noms onto ${nick}'s tail.");
-			}
-			$nomnick = $nick;
-		} 
-		else {
-			if (lc($args) eq "gummybot" || lc($args) eq "gummy") {
-				if (defined $nomnick) {
-					gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
-				}
-				else {
-					gummydo($server,$target, "at ${nick}'s command the serpent latches on to it's own tail and forms Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
-				}
-				$nomnick = $server->{nick};
-			}
-			elsif (lc($args) eq lc($nomnick) && defined $nomnick) {
-				gummydo($server,$target,"does a quick triple somersault into a half twist and lands perfectly back onto ${nomnick}'s tail.");
-			}
-			else {
-				if (defined $nomnick) {
-					gummydo($server,$target, "leaps from $nomnick at ${nick}'s command and noms onto ${args}'s tail.");
-				}
-				else {
-					gummydo($server,$target, "leaps at ${nick}'s command and noms onto ${args}'s tail.");
-				}
-				$nomnick = $args;
 			}
 		}
 	}
@@ -581,7 +594,7 @@ sub myevent {
 			if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
 				logtext("$nick PRIVMSG $data");
 				$args = dofunsubs($server, $target, $args);
-				gummymain($server, $curwind, $target, $nick, $cmd, $args);
+				parse_command($server, $curwind, $target, $nick, $cmd, $args);
 			}
 			else {
 				print("Denied! $target is flooded.");
