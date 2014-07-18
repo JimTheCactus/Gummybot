@@ -27,6 +27,7 @@ my %commands; # Holds the table of commands.
 	'say' => \&cmd_say,
 	'do' => \&cmd_do,
 	'telesay' => \&cmd_telesay,
+	'teledo' => \&cmd_teledo,
 	'crickets' => \&cmd_crickets,
 	'coolkids' => \&cmd_coolkids,
 	'getitoff' => \&cmd_getitoff,
