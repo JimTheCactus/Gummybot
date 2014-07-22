@@ -558,7 +558,7 @@ sub cmd_autogreet {
 		else {
 			$greets{$greetnick} = $args;
 			write_greets();
-			gummydo($server,$target, "pauses breifly as the HDD light blinks in his eyes. Saved!");
+			gummydo($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved!");
 		}
 	}
 	else {
@@ -781,7 +781,7 @@ sub join_pounce {
 
 sub nick_change {
 	my ($channel, $nick, $oldnick) = @_;
-	if (Irssi::settings_get_bool('Gummy_AllowAutogreet') && !Irssi::settings_get_bool('Gummy_GreetOnEntry')) {
+	if (Irssi::settings_get_bool('Gummy_AllowAutogreet')) {
 		do_greet($channel->{server},$channel->{name},$oldnick, $nick->{nick});
 	}
 	if (lc($nick->{nick}) eq lc($nomnick)) {
