@@ -5,7 +5,7 @@ use Storable;
 use File::Spec;
 use POSIX qw/strftime/;
 
-my $gummyver = "3.0.0";
+my $gummyver = "2.9.7";
 
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
@@ -33,6 +33,7 @@ my %commands; # Holds the table of commands.
 	'getitoff' => \&cmd_getitoff,
 	'dance' => \&cmd_dance,
 	'isskynet()' => \&cmd_isskynet,
+	'roll' => \&cmd_roll,
 	'om' => \&cmd_om,
 	'autogreet' => \&cmd_autogreet,
 	'memo' => \&cmd_memo,
@@ -475,6 +476,38 @@ sub cmd_isskynet {
 	gummysay($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
 }
 
+sub cmd_roll {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if (!int(@params[1]) || !int(@params[0])) {
+		gummydo($server, $target, "Blinks. How many of what dice? !gb roll <number> <sides>");
+		return;
+	}
+	my $rolls = int(@params[0]);
+	my $sides = int(@params[1]);
+
+	if ($rolls > 10 || $rolls < 1) {
+		gummydo($server, $target, "looks around but doesn't find that many dice. He only has 10!");
+		return;
+	}
+
+	if ($sides < 2 || $sides > 10000) {
+		gummydo($server, $target, "looks around but doesn't find a dice with that many sides. He only has up to 10000!");
+		return;
+	}
+
+	my $result;
+	my $sum=0;
+	$result = "rolls. {";
+	for (my $count = 0; $count < $rolls; $count ++) {
+		my $roll = int(rand($sides))+1;
+		$result = "$result $roll ";
+		$sum = $sum + $roll;
+	}
+	$result = "$result} = $sum";
+	gummydo($server, $target, $result);
+}
+
 sub cmd_om {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -578,6 +611,7 @@ sub cmd_off {
 		gummysay($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
 	}
 }
+
 sub parse_command {
 	my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
 	$cmd = lc($cmd);
