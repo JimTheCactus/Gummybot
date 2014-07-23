@@ -856,6 +856,9 @@ sub nick_change {
 	if (lc($oldnick) eq lc($nomnick)) {
 		$nomnick=$nick->{nick};
 	}
+	# Update their activity record to match the new nick
+	delete $activity{lc($channel->{name})}->{$oldnick};
+	$activity{lc($channel->{name})}->{$nick->{nick}}=time;
 }
 
 sub check_release {
@@ -868,17 +871,22 @@ sub check_release {
 
 sub nick_part {
 	my ($server, $channel, $nick) = @_;
+	delete $activity{lc($channel)}->{$nick};	
 	check_release($server,$channel, $nick);
 }
 sub nick_quit {
 	my ($server, $nick) = @_;
-
+	# Remove the person from all of the channels they're listed in.
+	foreach my $channel (keys %activity){
+		delete $activity{$channel}->{$nick};	
+	}
 	if (lc($nick) eq lc($nomnick)) {
 		$nomnick=undef;	
 	}
 }
 sub nick_kick {
 	my ($server, $channel, $nick) = @_;
+	delete $activity{lc($channel)}->{$nick};	
 	check_release($server,$channel, $nick);
 }
 
