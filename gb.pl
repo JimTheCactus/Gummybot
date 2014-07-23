@@ -31,7 +31,6 @@ my %commands; # Holds the table of commands.
 	},
 	'ver' => {
 		cmd=>\&cmd_ver,
-		short_help=>"",
 		help=>"Reports Gummy's version."
 	},
 	'say' => {
@@ -56,7 +55,6 @@ my %commands; # Holds the table of commands.
 	},
 	'crickets' => {
 		cmd=>\&cmd_crickets,
-		short_help=>"",
 		help=>"Causes Gummy to take notice of the crickets."
 	},
 	'coolkids' => {
@@ -66,17 +64,14 @@ my %commands; # Holds the table of commands.
 	},
 	'getitoff' => {
 		cmd=>\&cmd_getitoff,
-		short_help=>"",
 		help=>"Causes Gummy to let got of whoever he's nommed on to."
 	},
 	'dance' => {
 		cmd=>\&cmd_dance,
-		short_help=>"",
 		help=>"Causes Gummy to shake his groove thang!"
 	},
 	'isskynet()' => {
 		cmd=>\&cmd_isskynet,
-		short_help=>"",
 		help=>"Causes Gummy to verify whether he is or is not Skynet."
 	},
 	'roll' => {
@@ -106,7 +101,6 @@ my %commands; # Holds the table of commands.
 	},
 	'off' => {
 		cmd=>\&cmd_on,
-		short_help => "",
 		help => "Causes Gummy to disable himself. Only usable by channel ops."
 	}
 );
@@ -716,9 +710,35 @@ sub cmd_memo {
 }
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
-	gummysay($server,$target,"Known Commands: nom [+], om [nom, add [+]], coolkids [<channel>/awwyeah], autogreet <greeting>, memo <targetnick> <memotext>, crickets, do <action>, teledo <channel> <action>, say <text>, telesay <channel> <text>, dance, getitoff, log, ver, on (@), off (@)");
-	gummysay($server,$target,"Known substitutions: \\%mane, \\%num, \\%peep, \\%pony, \\%allpony \\%critter.");
+	my @params = split(/\s+/, $args);
+	if ($params[0]) {
+		my $cmd = lc($params[0]);
+		if (exists $commands{$cmd}) {
+			my $msg = "Usage: !gb $cmd";
+			if (exists $commands{$cmd}->{short_help}) {
+				$msg = $msg . " $commands{$cmd}->{short_help}";
+			}			
+			gummysay($server,$target, $msg);
+			if (exists $commands{$cmd}->{help}) {
+				gummysay($server,$target, $commands{$cmd}->{help});
+			}
+		}
+		else {
+			gummydo($server, $target, "blinks. Maybe he doesn't know that command? Try just !gb help");
+		}
+	}
+	else {
+		gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+		my @commands;
+		foreach my $cmd (keys %commands) {
+			my $msg = "$cmd";
+			if (exists $commands{$cmd}->{short_help}) {
+				$msg = $msg . " $commands{$cmd}->{short_help}";
+			}
+			push @commands, $msg;
+		}
+		gummysay($server,$target,"Commands: " . join(",",@commands));
+	}
 }
 
 sub cmd_on {
