@@ -97,8 +97,8 @@ sub logtext {
 
 # Trims whitespace. Why a text parser language doesn't have this is beyond me.
 sub trim {
-	my $temp=$_;
-	$temp =~ s/^\s+|\s+$//g;
+	my $temp=shift;
+	$temp = ~s/^\s+|\s+$//g;
 	return $temp;
 }
 
