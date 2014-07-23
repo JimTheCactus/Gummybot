@@ -284,6 +284,14 @@ sub dofunsubs {
 			$count = $count + 1;
 		}
 	}
+	if ($server->ischannel($channame)) {
+		my $channel = $server->channel_find($channame);
+		my @nicks = $channel->nicks();
+		my $mynum=rand(scalar(@nicks));
+		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]->{nick}/) {
+			$mynum=rand(scalar(@nicks));
+		};
+	}
 	if ($count == 100) {
 		print "BAILED!";
 	}
