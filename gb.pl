@@ -24,23 +24,91 @@ my %commands; # Holds the table of commands.
 
 # Define the table of commands and their handlers.
 %commands = (
-	'nom' => \&cmd_nom,
-	'ver' => \&cmd_ver,
-	'say' => \&cmd_say,
-	'do' => \&cmd_do,
-	'telesay' => \&cmd_telesay,
-	'teledo' => \&cmd_teledo,
-	'crickets' => \&cmd_crickets,
-	'coolkids' => \&cmd_coolkids,
-	'getitoff' => \&cmd_getitoff,
-	'dance' => \&cmd_dance,
-	'isskynet()' => \&cmd_isskynet,
-	'roll' => \&cmd_roll,
-	'om' => \&cmd_om,
-	'autogreet' => \&cmd_autogreet,
-	'memo' => \&cmd_memo,
-	'help' => \&cmd_help,
-	'off' => \&cmd_on
+	'nom' => {
+		cmd=>\&cmd_nom,
+		short_help=>"[<target>]",
+		help=>"Causes Gummy to attach himself to you. If you provide an argument, he latches on to them instead."
+	},
+	'ver' => {
+		cmd=>\&cmd_ver,
+		short_help=>"",
+		help=>"Reports Gummy's version."
+	},
+	'say' => {
+		cmd=>\&cmd_say,
+		short_help=>"<text>",
+		help=>"Causes Gummy to say what you ask."
+	},
+	'do' => {
+		cmd=>\&cmd_do,
+		short_help=>"<action>",
+		help=>"Causes Gummy to do what you ask."
+	},
+	'telesay' => {
+		cmd=>\&cmd_telesay,
+		short_help=>"<channel> <text>",
+		help=>"Causes Gummy to say what you ask on the target channel."
+	},
+	'teledo' => {
+		cmd=>\&cmd_teledo,
+		short_help=>"<channel> <action>",
+		help=>"Causes Gummy to do what you ask on the target channel."
+	},
+	'crickets' => {
+		cmd=>\&cmd_crickets,
+		short_help=>"",
+		help=>"Causes Gummy to take notice of the crickets."
+	},
+	'coolkids' => {
+		cmd=>\&cmd_coolkids,
+		short_help=>"[<channel> | awwyeah]",
+		help=>"Causes Gummy to hand out sunglasses to <channel> or the current channel and PM you everyone he's see talk in the last 10 minutes. awwyeah causes him to produce that list directly in the channel." 
+	},
+	'getitoff' => {
+		cmd=>\&cmd_getitoff,
+		short_help=>"",
+		help=>"Causes Gummy to let got of whoever he's nommed on to."
+	},
+	'dance' => {
+		cmd=>\&cmd_dance,
+		short_help=>"",
+		help=>"Causes Gummy to shake his groove thang!"
+	},
+	'isskynet()' => {
+		cmd=>\&cmd_isskynet,
+		short_help=>"",
+		help=>"Causes Gummy to verify whether he is or is not Skynet."
+	},
+	'roll' => {
+		cmd=>\&cmd_roll,
+		short_help => "<dice> <sides>",
+		help => "Causes Gummy to roll <dice> dice with <sides> on them."
+	},
+	'om' => {
+		cmd => \&cmd_om,
+		short_help => "[add <text> | nom | skippy]",
+		help =>"Causes Gummy to ponder the universe. Use add to suggest a new contemplation, nom to contemplate the inner wisdom on nom, and skippy to return the wisdom of Specialist Skippy."
+	},
+	'autogreet' => {
+		cmd => \&cmd_autogreet,
+		short_help => "[<greeting>]",
+		help=>"Causes Gummy to set your greeting. If you do not provide a greeting he'll erase your current one."
+	},
+	'memo' => {
+		cmd => \&cmd_memo,
+		short_help => "<target> <text>",
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
+	},
+	'help' => {
+		cmd=>\&cmd_help,
+		short_help => "[<command>]",
+		help => "Causes Gummy to emit the list of commands he knows, or information about a specific <command>."
+	},
+	'off' => {
+		cmd=>\&cmd_on,
+		short_help => "",
+		help => "Causes Gummy to disable himself. Only usable by channel ops."
+	}
 );
 
 # Establish the settings and their defaults
@@ -673,7 +741,7 @@ sub parse_command {
 	my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
 	$cmd = lc($cmd);
 	if (defined $commandlist->{$cmd}) {
-		eval {$commandlist->{$cmd}->($server, $wind, $target, $nick, $args)};
+		eval {$commandlist->{$cmd}->{cmd}->($server, $wind, $target, $nick, $args)};
 		if ($@) {
 			gummydo($server,$target,"shutters and clangs. Error appears in his eyes briefly.");
 			print ("GUMMY CRITICAL $@");
