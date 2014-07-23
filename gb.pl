@@ -675,7 +675,8 @@ sub parse_command {
 	if (defined $commandlist->{$cmd}) {
 		eval {$commandlist->{$cmd}->($server, $wind, $target, $nick, $args)};
 		if ($@) {
-			warn $@;
+			gummydo($server,$target,"shutters and clangs. Error appears in his eyes briefly.");
+			print ("GUMMY CRITICAL $@");
 			return 0;
 		}
 		else {
