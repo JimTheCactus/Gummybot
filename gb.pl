@@ -930,6 +930,17 @@ sub gummy_command {
 	}
 }
 
+sub action_event {
+	my ($server, $msg, $nick, $address, $target) = @_;
+
+	# If an action happens, mark that we heard it and take no further action.
+
+	$lastmsg = time;
+	if ($server->ischannel($target)) {
+		$activity{lc($target)}->{$nick} = time;
+	}	
+}
+
 
 Irssi::command_bind("gummy", "gummy_command");
 Irssi::signal_add("event privmsg", "myevent");
@@ -938,3 +949,4 @@ Irssi::signal_add("message part","nick_part");
 Irssi::signal_add("message kick","nick_kick");
 Irssi::signal_add("message quit","nick_quit");
 Irssi::signal_add("nicklist changed","nick_change");
+Irssi::signal_add("message irc action", "action_event");
