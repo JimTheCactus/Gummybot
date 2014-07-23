@@ -1,0 +1,37 @@
+# Import the constants
+use POE::Component::IRC::Plugin qw( :ALL );
+
+# Our constructor
+sub new {
+	my $package = shift;
+	my $self = bless {@_}, $package;
+	return $self;
+}
+
+# Required entry point for PoCo-IRC
+sub PCI_register {
+	my ($self, $irc) = @_;
+	
+	# Register events we are interested in
+	$irc->plugin_register( $self, 'SERVER', qw( 355 kick whatever) );
+
+	# Return success
+	return 1;
+}
+
+# Required exit point for PoCo-IRC
+sub PCI_unregister {
+	my ($self, $irc) = @_;
+	return 1;
+}
+
+# Default handler for events that do not have a corresponding plugin
+# method defined.
+sub _default {
+	my ($self, $irc, $event) = splice @_, 0, 3;
+	print "Default called for $event\n";
+
+	# Return an exit code
+	return PCI_EAT_NONE;
+}
+

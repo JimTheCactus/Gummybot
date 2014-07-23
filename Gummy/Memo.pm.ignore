@@ -1,0 +1,20 @@
+package Gummy::Memo
+sub get_dependancies {
+	return {
+		"Gummy::Core"=>1
+	};
+}
+
+sub init {
+}
+
+sub write_memos {
+        store \%memos, getdir(Irssi::settings_get_str('Gummy_MemoFile'));
+}
+
+sub read_memos {
+        %memos=();
+        if (-e getdir(Irssi::settings_get_str('Gummy_MemoFile'))) {
+                %memos = %{retrieve(getdir(Irssi::settings_get_str('Gummy_MemoFile')))};
+        }
+}

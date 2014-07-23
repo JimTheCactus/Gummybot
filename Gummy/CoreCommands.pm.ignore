@@ -1,0 +1,40 @@
+package Gummy::Plugins::CoreCommands;
+use strict;
+use Irssi;
+
+
+sub get_dependancies {
+	return {
+		"Gummy::Core"=>1
+	};
+}
+
+sub init {
+	print "Starting Core Commands Module...\n";
+	#Gummy::RemoteCommands::register_plugin('off',\&cmd_off);
+	Gummy::RemoteCommands::register_plugin('help',\&cmd_help);
+	Gummy::RemoteCommands::register_plugin('ver',\&cmd_ver);
+}
+
+#sub cmd_off {
+#	my ($server, $wind, $target, $nick, $args) = @_;
+#	if (isgummyop($server,$target,$nick)) {
+#		disablegummy();
+#		gummysay($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
+#	}
+#}
+
+sub cmd_help {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	Gummy::Core::gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+	Gummy::Core::gummysay($server,$target,"Known Commands: nom [+], om [nom, add [+]], coolkids [<channel>/awwyeah], autogreet <greeting>, memo <targetnick> <memotext>, crickets, do <action>, teledo <channel> <action>, say <text>, telesay <channel> <text>, dance, getitoff, log, ver, on (@), off (@)");
+	Gummy::Core::gummysay($server,$target,"Known substitutions: \\%mane, \\%num, \\%peep, \\%pony, \\%allpony \\%critter.");
+}
+
+sub cmd_ver {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	Gummy::Core::gummysay($server, $target, "Gummybot is currently version $Gummy::Core::gummyver.");
+}
+
+
+1;

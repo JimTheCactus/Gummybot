@@ -1,0 +1,118 @@
+package Gummy::RemoteCommands;
+
+my %commands;
+
+sub get_dependancies {
+	return {
+		"Gummy::Core"=>1
+	};
+}
+
+sub init {
+	print "Staring Remote Commands module...";
+}
+
+# Import the constants
+use POE::Component::IRC::Plugin qw( :ALL );
+
+# Our constructor
+sub new {
+        my $package = shift;
+        my $self = bless {@_}, $package;
+        return $self;
+}
+
+# Required entry point for PoCo-IRC
+sub PCI_register {
+        my ($self, $irc) = @_;
+
+        # Register events we are interested in
+        $irc->plugin_register( $self, 'SERVER', qw(public) );
+
+        # Return success
+        return 1;
+}
+
+# Required exit point for PoCo-IRC
+sub PCI_unregister {
+	my ($self, $irc) = @_;
+        return 1;
+}
+
+# Default handler for events that do not have a corresponding plugin
+# method defined.
+sub _default {
+        my ($self, $irc, $event) = splice @_, 0, 3;
+        print "Default called for $event\n";
+
+        # Return an exit code
+        return PCI_EAT_NONE;
+}
+
+
+sub register_command {
+        my $command_text = shift;
+        my $command_target = shift;
+
+        die "Command $command_text already exists" if (exists $commands{$command_text});
+        $commands{$command_text} = $command_target;
+}
+
+sub unregister_command {
+        delete $commands{$command_text};
+}
+
+sub parse_command {
+        my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
+        $cmd = lc($cmd);
+        if (defined $commandlist->{$cmd}) {
+                eval {$commandlist->{$cmd}->($server, $wind, $target, $nick, $args)};
+                if ($@) {
+                        warn $@;
+                        return 0;
+                }
+                else {
+                        return 1;
+                }
+        }
+        else {
+                return 0;
+        }
+}
+
+sub S_public {
+	my ($self, $nickhost, $channels, $text) = @_;
+	my $target, $host = split(/ !/,$nickhost);
+	my $channel = @{$channels}[0];
+	my ($prefix,$cmd, $args) = split(/\s+/,$text,3);
+
+	print "<$nickhost>@$channel: $text\n";
+
+	if ($prefix eq "!gb" || $prefix eq "!gummy" || $prefix eq "!gummybot") {
+#		if (lc($cmd) eq "off") {
+#			if (isgummyop($server,$target,$nick) && $gummyenabled!=0) {
+#				disablegummy();
+#				$gummyenabled = 0;
+#				logtext("$nick PRIVMSG $data");
+#				gummysay($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
+#			}
+#		}
+		if (nickflood($nick,$cfg->{'flood_limits'}->{'nick'}/1000)) {
+			if (nickflood($target,$cfg->{'flood_limits'}->{'channel'}/1000)) {
+				logtext("$nick PRIVMSG $data");
+				$args = dofunsubs($server, $target, $args);
+				gummymain($server, $curwind, $target, $nick, $cmd, $args);
+				return PCI_EAT_PLUGIN;
+			}
+			else {
+				print("Denied! $target is flooded.\n");
+			}	
+		}
+		else {
+			print("Denied! $nick is flooded.\n");
+		}
+	}
+	return PCI_EAT_NONE;
+}
+
+1;

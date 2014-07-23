@@ -1,0 +1,223 @@
+package Gummy::Core;
+use strict;
+#use Irssi;
+use Storable;
+use File::Spec;
+use POSIX qw/strftime/;
+#use Exporter 'import';
+#@EXPORT = qw ()
+
+my $gummyver = "3.0.0";
+our $cfg;
+
+our %floodtimes; # Holds the various flood timers
+#our $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
+our %funstuff; # Holds the various replacement data
+#our $blinkhandle; 
+#our $lastblink; # Keeps track of the last time we blinked
+#our $lastmsg; # Keeps track of the last time we saw traffic
+#our %activity; # Keeps track of when we last saw a specific person
+our $lastupdate=time; # Keeps track of when we last loaded the fun stuff
+#our $nomnick; # Keeps track of who gummy is attached to
+#our %greets; # Holds the greeting messages
+#our %memos; # Holds the current pending memos
+
+sub init {
+	print "Starting Core module...";
+	#GummyBot::call_irssi('settings_add_str','GummyBot','Gummy_RootDir','');	
+	#GummyBot::call_irssi('settings_add_str','GummyBot','Gummy_LogFile','gummylog');
+	#GummyBot::call_irssi('settings_add_time','GummyBot','Gummy_NickFloodLimit','10s');
+	#GummyBot::call_irssi('settings_add_time','GummyBot','Gummy_ChanFloodLimit','3s');
+	loadfunstuff();
+	print "Server is ${$cfg->{'server'}}\n";
+}
+
+sub getdir {
+	my $rootdir = GummyBot::$cfg->{'rootdir'};
+
+	if (trim($rootdir) eq '') {
+		return @_;
+	}
+	else {
+		return File::Spec->catfile(GummyBot::call_irssi('settings_get_str','Gummy_RootDir'),@_);
+	}
+}
+
+sub logtext {
+	open LOGFILE, ">> ".getdir(GummyBot::call_irssi('settings_get_str','Gummy_LogFile'));
+	print LOGFILE time;
+	print LOGFILE ":@_\n";
+	close LOGFILE;
+}
+
+# Trims whitespace. Why a text parser language doesn't have this is beyond me.
+sub trim {
+	my $temp=$_;
+	$temp=~s/^\s+|\s+$//g;
+	return $temp;
+}
+
+sub isgummyop {
+	my ($server,$channame,$target)=@_;
+	if (not $server->ischannel($channame)) { return 0 };
+	my $channel = $server->channel_find($channame);
+	my $nick = $channel->nick_find($target);
+	if ($nick && $nick->{op}) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+sub loadfunfile {
+	my $count=0;
+	my $type=$_[0];
+	my @lines;
+	open FUNFILE, getdir("gummyfun/$_[0]");
+	while (<FUNFILE>) {
+		my $line = $_;
+		chomp($line);
+		$line =~ s/^\s+|\s+$//g;
+		if ($line) {
+			@lines=(@lines,$line);
+			$count++;
+		}
+	}
+	close FUNFILE;
+	$funstuff{$type}=\@lines;
+	return $count;
+}
+
+sub loadfunstuff {
+	my $count;
+	$lastupdate = time;
+	$funstuff{mane} = ["Twilight Sparkle", "Rarity", "Pinkie Pie", "Fluttershy", "Rainbow Dash", "Applejack"];
+
+	$count = loadfunfile("pony");
+	print("Loaded $count ponies.");
+
+	$count = loadfunfile("allpony");
+	print("Loaded $count allponies.");
+
+	$count = loadfunfile("buddha");
+	print("Loaded $count words of wisdom.");
+
+	$count = loadfunfile("critter");
+	print("Loaded $count critters.");
+
+	$count = loadfunfile("skippy");
+	print("Loaded $count skippyisms.");
+
+#	read_greets();
+#	$count = scalar keys %greets;
+#	print("Loaded $count greets.");
+
+#	read_memos();
+#	$count = scalar keys %memos;
+#	print("Loaded memos for $count nicks.");
+}
+
+sub dofunsubs {
+	my ($server, $channame, $text) = @_;
+	my $mynum;
+	
+	if (not %funstuff) {
+		loadfunstuff();
+	}
+	
+	$mynum = int(rand(100));
+	while ($text =~ s/(^|[^\\])%num/$1$mynum/) {
+	        $mynum = int(rand(100));
+	};
+
+	if ($server->ischannel($channame)) {
+		my $channel = $server->channel_find($channame);
+		my @nicks = $channel->nicks();
+		$mynum=rand(scalar(@nicks));
+		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]->{nick}/) {
+			$mynum=rand(scalar(@nicks));
+		};
+	}
+	
+	my @choices = @{$funstuff{mane}};	
+	$mynum=rand(scalar(@choices));
+	while ($text =~ s/(^|[^\\])%mane/$1$choices[$mynum]/) {
+		$mynum=rand(scalar(@choices));
+	};
+	
+	my @choices = @{$funstuff{pony}};	
+	$mynum=rand(scalar(@choices));
+	while ($text =~ s/(^|[^\\])%pony/$1$choices[$mynum]/) {
+		$mynum=rand(scalar(@choices));
+	};
+	
+	my @choices = @{$funstuff{allpony}};	
+	$mynum=rand(scalar(@choices));
+	while ($text =~ s/(^|[^\\])%allpony/$1$choices[$mynum]/) {
+		$mynum=rand(scalar(@choices));
+	};
+
+	my @choices = @{$funstuff{critter}};	
+	$mynum=rand(scalar(@choices));
+	while ($text =~ s/(^|[^\\])%critter/$1$choices[$mynum]/) {
+		$mynum=rand(scalar(@choices));
+	};
+
+	$text =~ s/[\\](.)/\1/g;
+
+	return $text;
+}
+
+sub gummydo {
+	my ($server, $channame, $text) = @_;
+	my $data = dofunsubs($server,$channame,$text);
+	$server->command("describe $channame $data");
+	logtext("Gummybot ACTION $channame:$data");
+}
+
+sub gummysay {
+	my ($server, $channame, $text) = @_;
+	my $data = dofunsubs($server,$channame,$text);
+	$server->command("msg $channame Nom! ($data)");
+	logtext("Gummybot PRIVMSG $channame:Nom! ($data)");
+}
+
+sub gummyrawsay {
+	my ($server, $channame, $text) = @_;
+	$server->command("msg $channame Nom! ($text)");
+	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");
+	
+}
+
+sub flood {
+	my ($type, $target, $timeout) = @_;
+	my $augtarget = $type.":".$target;
+	if (not defined $floodtimes{$augtarget}) {
+		$floodtimes{$augtarget} = time();
+		return -1;
+	}
+	else {
+		if ((time() - $floodtimes{$augtarget}) >= $timeout) {
+			$floodtimes{$augtarget} = time();
+			return -1;
+		}
+		else {
+			return 0;
+		}
+	}
+}
+
+sub floodreset {
+	my ($type, $target) = @_;
+	my $augtarget = $type.":".$target;
+	if (defined $floodtimes{$augtarget}) {
+		$floodtimes{$augtarget} = 0;
+	}
+}
+
+sub nickflood {
+	return flood("nick",@_);
+}
+
+1;

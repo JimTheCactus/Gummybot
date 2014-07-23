@@ -1,0 +1,14 @@
+package Gummy::Autogreet;
+use strict;
+
+sub write_greets {
+        store \%greets, getdir(Irssi::settings_get_str('Gummy_GreetFile'));
+}
+
+sub read_greets {
+        %greets=();
+        if (-e getdir(Irssi::settings_get_str('Gummy_GreetFile'))) {
+                %greets = %{retrieve(getdir(Irssi::settings_get_str('Gummy_GreetFile')))};
+        }
+}
+
