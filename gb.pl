@@ -3,6 +3,7 @@ use vars qw($VERSION %IRSSI);
 use Irssi;
 use Storable;
 use File::Spec;
+use Config::Tiny;
 use POSIX qw/strftime/;
 
 my $gummyver = "2.9.7";
@@ -10,6 +11,7 @@ my $gummyver = "2.9.7";
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
 my %funstuff; # Holds the various replacement data
+my %funsubs;
 my $blinkhandle; 
 my $lastblink; # Keeps track of the last time we blinked
 my $lastmsg; # Keeps track of the last time we saw traffic
@@ -96,7 +98,7 @@ sub logtext {
 # Trims whitespace. Why a text parser language doesn't have this is beyond me.
 sub trim {
 	my $temp=shift;
-	$temp=~s/^\s+|\s+$//g;
+	$temp = ~s/^\s+|\s+$//g;
 	return $temp;
 }
 
@@ -177,24 +179,6 @@ sub loadfunfile {
 
 sub loadfunstuff {
 	my $count;
-	$lastupdate = time;
-	$funstuff{mane} = ["Twilight Sparkle", "Rarity", "Pinkie Pie", "Fluttershy", "Rainbow Dash", "Applejack"];
-
-	$count = loadfunfile("pony");
-	print("Loaded $count ponies.");
-
-	$count = loadfunfile("allpony");
-	print("Loaded $count allponies.");
-
-	$count = loadfunfile("buddha");
-	print("Loaded $count words of wisdom.");
-
-	$count = loadfunfile("critter");
-	print("Loaded $count critters.");
-
-	$count = loadfunfile("skippy");
-	print("Loaded $count skippyisms.");
-
 	read_greets();
 	$count = scalar keys %greets;
 	print("Loaded $count greets.");
@@ -202,56 +186,107 @@ sub loadfunstuff {
 	read_memos();
 	$count = scalar keys %memos;
 	print("Loaded memos for $count nicks.");
+
+	$count = loadfunfile("buddha");
+	print("Loaded $count words of wisdom.");
+
+	$count = loadfunfile("skippy");
+	print("Loaded $count skippyisms.");
+
+	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
+	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
+
+	
+	$ponylist = Config::Tiny->new();
+	$sublist = Config::Tiny->new();
+
+	$ponylist = Config::Tiny->read(getdir('gummyfun/ponies'));
+	if (!defined $ponylist) {
+		my $errtxt = Config::Tiny->errstr();
+		print("Failed to load ponylist: $errtxt")
+	}
+	else {
+		$count  = scalar keys %$ponylist;
+		print("Loaded $count ponies.");
+	}
+
+	$sublist = Config::Tiny->read(getdir('gummyfun/substitutions'));
+	$count = scalar keys %$sublist;
+	print("Loaded $count substitutions.");
+	print("Please wait... Generating funstuff lookups...");
+
+	my %poniesbyclass;
+
+	foreach my $ponyname (keys %$ponylist) {
+		my $ponyclasses = $$ponylist{$ponyname}{'flags'};
+		my @classlist = split(/\s*,\s*/,$ponyclasses);
+		foreach my $class (@classlist) {
+			$class=lc($class);
+			$poniesbyclass{$class}{$ponyname}=1;
+		}
+	}
+
+	# Now forward map the list of ponies. Memory intensive, but much faster.
+	foreach my $funsub (keys %$sublist) {
+		my %ponies = ();
+
+		print "Loading qualifiers for $funsub...";
+		my $ponyclasses = $$sublist{$funsub}{'line'};
+		print "Intersecting classes $ponyclasses...";
+		my @classlist = split(/\s*,\s*/,$ponyclasses);
+		my $first = 1;
+		foreach my $class (@classlist) {
+			$class = lc($class);
+			if ($class !~ /!/) {
+				if ($first) {
+					map {$ponies{$_} = 1} keys %{$poniesbyclass{$class}};
+					$first=undef;
+				}
+				else {
+					foreach my $pony (keys %ponies) {
+						if (!exists $poniesbyclass{$class}->{$pony}) {
+							delete $ponies{$pony};
+						}
+					}
+				}
+			}
+		}
+		# If we still haven't included anyone, include everyone.
+		if ($first) {
+			map {$ponies{$_} = 1} keys %$ponylist;
+		}
+		foreach my $class (@classlist) {
+			$class = lc($class);
+			if ($class =~ /!/) {
+				$class =~ s/!//;
+				map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
+			}
+		}
+		my $subcount = scalar keys %ponies;
+		print "Options for sub $funsub: $subcount";
+		my @options = keys %ponies;
+		$funsubs{lc($funsub)} = \@options;
+	}
+	print("Done!");
 }
 
 sub dofunsubs {
 	my ($server, $channame, $text) = @_;
-	my $mynum;
-	
-	if (not %funstuff) {
-		loadfunstuff();
+	my $count=0;
+	foreach my $funsub (keys %funsubs) {
+		my $searchtext = quotemeta ("%". $funsub);
+		while ($text =~ /$searchtext/i && $count < 100) {
+			my $precursor = $`;
+			my $postcursor = $';
+			my $arref = $funsubs{lc($funsub)};
+			my @choices = @$arref;
+			$text = $` . @choices[rand(scalar @choices)] . $';
+			$count = $count + 1;
+		}
 	}
-	
-	$mynum = int(rand(100));
-	while ($text =~ s/(^|[^\\])%num/$1$mynum/) {
-	        $mynum = int(rand(100));
-	};
-
-	if ($server->ischannel($channame)) {
-		my $channel = $server->channel_find($channame);
-		my @nicks = $channel->nicks();
-		$mynum=rand(scalar(@nicks));
-		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]->{nick}/) {
-			$mynum=rand(scalar(@nicks));
-		};
+	if ($count == 100) {
+		print "BAILED!";
 	}
-	
-	my @choices = @{$funstuff{mane}};	
-	$mynum=rand(scalar(@choices));
-	while ($text =~ s/(^|[^\\])%mane/$1$choices[$mynum]/) {
-		$mynum=rand(scalar(@choices));
-	};
-	
-	my @choices = @{$funstuff{pony}};	
-	$mynum=rand(scalar(@choices));
-	while ($text =~ s/(^|[^\\])%pony/$1$choices[$mynum]/) {
-		$mynum=rand(scalar(@choices));
-	};
-	
-	my @choices = @{$funstuff{allpony}};	
-	$mynum=rand(scalar(@choices));
-	while ($text =~ s/(^|[^\\])%allpony/$1$choices[$mynum]/) {
-		$mynum=rand(scalar(@choices));
-	};
-
-	my @choices = @{$funstuff{critter}};	
-	$mynum=rand(scalar(@choices));
-	while ($text =~ s/(^|[^\\])%critter/$1$choices[$mynum]/) {
-		$mynum=rand(scalar(@choices));
-	};
-
-	$text =~ s/[\\](.)/\1/g;
-
 	return $text;
 }
 
