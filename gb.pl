@@ -230,9 +230,7 @@ sub loadfunstuff {
 	foreach my $funsub (keys %$sublist) {
 		my %ponies = ();
 
-		print "Loading qualifiers for $funsub...";
 		my $ponyclasses = $$sublist{$funsub}{'line'};
-		print "Intersecting classes $ponyclasses...";
 		my @classlist = split(/\s*,\s*/,$ponyclasses);
 		my $first = 1;
 		foreach my $class (@classlist) {
@@ -262,11 +260,10 @@ sub loadfunstuff {
 				map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
 			}
 		}
-		my $subcount = scalar keys %ponies;
-		print "Options for sub $funsub: $subcount";
 		my @options = keys %ponies;
 		$funsubs{lc($funsub)} = \@options;
 	}
+	$lastupdate = time;
 	print("Done!");
 }
 
