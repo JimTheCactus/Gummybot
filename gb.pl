@@ -286,9 +286,26 @@ sub dofunsubs {
 	}
 	if ($server->ischannel($channame)) {
 		my $channel = $server->channel_find($channame);
-		my @nicks = $channel->nicks();
+		my @nicks;
+		# Go through the list of known active nicks
+		foreach (keys %{$activity{lc($channame)}}){
+			# if they're still logged in...
+			if ($channel->nick_find($_)) {
+				# Add them to the list
+				push @nicks,$_;
+			}
+			else {
+				print "ignoring invalid $_ peep"
+			}
+		}
+
+		# if there isn't anyone else, then add us just so the list isn't empty.
+		if (scalar @nicks < 1) {
+			push @nicks, $server->{nick};
+		}
+
 		my $mynum=rand(scalar(@nicks));
-		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]->{nick}/) {
+		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]/) {
 			$mynum=rand(scalar(@nicks));
 		};
 	}
@@ -855,6 +872,7 @@ sub nick_part {
 }
 sub nick_quit {
 	my ($server, $nick) = @_;
+
 	if (lc($nick) eq lc($nomnick)) {
 		$nomnick=undef;	
 	}
