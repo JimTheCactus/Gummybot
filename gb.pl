@@ -332,6 +332,9 @@ sub loadfunstuff {
 sub dofunsubs {
 	my ($server, $channame, $text) = @_;
 	my $count=0;
+
+	$text =~ s/%wut/%weird%living/g;
+
 	foreach my $funsub (keys %funsubs) {
 		my $searchtext = quotemeta ("%". $funsub);
 		while ($text =~ /$searchtext/i && $count < 100) {
