@@ -106,7 +106,7 @@ my %commands; # Holds the table of commands.
 );
 
 # Establish the settings and their defaults
-Irssi::settings_add_bool('Gummybot','Gummy_AutoOn',0);
+Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1);
