@@ -106,6 +106,7 @@ my %commands; # Holds the table of commands.
 );
 
 # Establish the settings and their defaults
+Irssi::settings_add_bool('Gummybot','Gummy_AutoOn',0);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1);
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1);
@@ -1042,3 +1043,7 @@ Irssi::signal_add("message kick","nick_kick");
 Irssi::signal_add("message quit","nick_quit");
 Irssi::signal_add("nicklist changed","nick_change");
 Irssi::signal_add("message irc action", "action_event");
+
+if (Irssi::settings_get_bool('Gummy_AutoOn')) {
+	enablegummy();	
+}
