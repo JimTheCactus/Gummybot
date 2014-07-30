@@ -1045,5 +1045,5 @@ Irssi::signal_add("nicklist changed","nick_change");
 Irssi::signal_add("message irc action", "action_event");
 
 if (Irssi::settings_get_bool('Gummy_AutoOn')) {
-	enablegummy();	
+	enablegummy("quiet");	
 }
