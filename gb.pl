@@ -94,6 +94,11 @@ my %commands; # Holds the table of commands.
 		short_help => "<target> <text>",
 		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
 	},
+	'whoswho' => {
+		cmd => \&cmd_whoswho,
+		short_help => "[<nick>]",
+		help => "Returns a link to the list of known Tumblrs or the link to a specific one based on the user's nickname."
+	},
 	'help' => {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
@@ -712,6 +717,18 @@ sub cmd_memo {
 		gummydo($server,$target,"ignores you as memos have been disabled.");
 	}
 }
+
+sub cmd_whoswho {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if ($args) {
+		# Do nothing at the moment
+	}
+	else {
+		gummydo($server,$target, "pulls out the list at https://docs.google.com/document/d/1XwQo7I7C3FsvQqeCzTzBTwTqGALdTbil2IMRYUMJu-s/edit?usp=sharing");
+	}
+
+}	
+
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
