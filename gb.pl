@@ -5,6 +5,7 @@ use Storable;
 use File::Spec;
 use Config::Tiny;
 use POSIX qw/strftime/;
+use LWP::Simple;
 
 my $gummyver = "2.9.7";
 
@@ -98,6 +99,10 @@ my %commands; # Holds the table of commands.
 		cmd => \&cmd_whoswho,
 		short_help => "[<nick>]",
 		help => "Returns a link to the list of known Tumblrs or the link to a specific one based on the user's nickname."
+	},
+	'yourip' => {
+		cmd => \&cmd_yourip,
+		help => "Causes gummy to emit his local IP. You don't need this."
 	},
 	'help' => {
 		cmd=>\&cmd_help,
@@ -729,6 +734,11 @@ sub cmd_whoswho {
 
 }	
 
+sub cmd_yourip {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	chomp (my $ip = get('http://icanhazip.com'));
+	gummydo($server, $target, "spits out a ticker tape reading: $ip");
+}
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
