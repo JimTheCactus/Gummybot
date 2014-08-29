@@ -874,6 +874,7 @@ sub blink_tick {
 		loadfunstuff();
 	}
 
+
 	foreach my $channame (keys %activity) {
 		my @prunelist=[];
 		my $key;
@@ -889,7 +890,7 @@ sub blink_tick {
 	}
 
 	if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
-		if ($gummyenabled != 0 && Irssi::settings_get_bool('Gummy_Blink')) {
+		if ($gummyenabled != 0) {
 			foreach (Irssi::channels()) {
 				if (defined $nomnick) {
 					if (rand(1) < .9) {
@@ -900,12 +901,14 @@ sub blink_tick {
 						gummydo($_->{server},$_->{name},"thrashes a bit on ${nomnick}'s tail.");
 					}
 				}
-				elsif (rand(1) < .9) {
-					gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
-				}
-				else {
-					gummysay($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
-					gummydo($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
+				if (Irssi::settings_get_bool('Gummy_Blink')) {
+					elsif (rand(1) < .9) {
+						gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
+					}
+					else {
+						gummysay($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
+						gummydo($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
+					}
 				}
 			}
 			$lastblink=time;
