@@ -1,4 +1,4 @@
-use strict;
+'use strict;
 use vars qw($VERSION %IRSSI);
 use Irssi;
 use Storable;
@@ -236,28 +236,6 @@ sub read_datastore {
 		@reminders = @{$datastore{reminders}};
 	}
 }
-
-#sub write_greets {
-#	store \%greets, getdir(Irssi::settings_get_str('Gummy_GreetFile'));
-#}
-
-#sub read_greets {
-#	%greets=();
-#	if (-e getdir(Irssi::settings_get_str('Gummy_GreetFile'))) {
-#		%greets = %{retrieve(getdir(Irssi::settings_get_str('Gummy_GreetFile')))};
-#	}
-#}
-
-#sub write_memos {
-#	store \%memos, getdir(Irssi::settings_get_str('Gummy_MemoFile'));
-#}
-
-#sub read_memos {
-#	%memos=();
-#	if (-e getdir(Irssi::settings_get_str('Gummy_MemoFile'))) {
-#		%memos = %{retrieve(getdir(Irssi::settings_get_str('Gummy_MemoFile')))};
-#	}
-#}
 
 sub loadfunfile {
 	my $count=0;
@@ -738,13 +716,13 @@ sub cmd_memo {
 	my $who;
 	($who, $args) = split(/\s+/,$args,2);
 
-	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-		gummydo($server,$target,"looks like he's overheated. Try again later.");
+	if ($args eq "" || $who eq "") {
+		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
 		return;
 	}
 
-	if ($args eq "" || $who eq "") {
-		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
+	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
+		gummydo($server,$target,"looks like he's overheated. Try again later.");
 		return;
 	}
 
@@ -783,11 +761,6 @@ sub cmd_remindme {
 	my $tick_scalar;
 	my %reminder;
 
-	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-		gummydo($server,$target,"looks like he's overheated. Try again later.");
-		return;
-	}
-
 	if (!$params[0] && !$params[1] && !$params[2]) {
 		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
 		return;
@@ -809,11 +782,18 @@ sub cmd_remindme {
 		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
 		return;
 	}	
+
+	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
+		gummydo($server,$target,"looks like he's overheated. Try again later.");
+		return;
+	}
 	
 	my $delivery_time = time+$params[0]*$tick_scalar;
-	$reminder{'delivery_time'}=$delivery_time;
-	$reminder{'message'}=$params[2];
-	$reminder{'nick'}=$nick;
+	$reminder{delivery_time}=$delivery_time;
+	$reminder{message}=$params[2];
+	$reminder{nick}=$nick;
+	$reminder{channel}=$target;
+
 	# Consider nick tracking?
 	#$reminder{'tracked_nick'}=$nick;
 
@@ -989,14 +969,19 @@ sub blink_tick {
 
 		# Look to see if the person is active in any channels
 		my $found=0;
+
 		foreach my $channame (keys %activity) {
 			my %chanlist = %{$activity{$channame}};
 			my $targetnick = lc($reminder{nick});
 			my @nicks = keys %chanlist;
+			if ($reminder{channel} eq "") {
+				print "No channel provided. Defaulting to PM. (This should be rare.)";
+				$reminder{channel} = $reminder{nick};
+			}
 			if (exists $chanlist{$targetnick}) {
 				# If so, ping them by privmsg
 				my $channel = Irssi::channel_find($channame);
-				gummydo($channel->{server}, $reminder{nick}, "reminds you: " . $reminder{message});
+				gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
 				$found = 1;
 				last;
 			}
