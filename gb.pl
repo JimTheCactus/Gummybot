@@ -970,26 +970,16 @@ sub blink_tick {
 		$changed = 1;
 
 		# Look to see if the person is active in any channels
-		my $found=0;
-
-		foreach my $channame (keys %activity) {
-			my %chanlist = %{$activity{$channame}};
-			my $targetnick = lc($reminder{nick});
-			my @nicks = keys %chanlist;
-			if ($reminder{channel} eq "") {
-				print "No channel provided. Defaulting to PM. (This should be rare.)";
-				$reminder{channel} = $reminder{nick};
-			}
-			if (exists $chanlist{$targetnick}) {
-				# If so, ping them by privmsg
-				my $channel = Irssi::channel_find($channame);
-				gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
-				$found = 1;
-				last;
-			}
+		if ($reminder{channel} eq "") {
+			print "No channel provided. Defaulting to PM. (This should be rare.)";
+			$reminder{channel} = $reminder{nick};
 		}
-		if (!$found) {
-			# If we didnt' find them in the activity list, log it as a memo.
+		# If they're active on that channel
+		if (exists $activity{$reminder{channel}}->{lc($reminder{nick})} && lc($reminder{channel}) ne lc($reminder{nick})) {
+			# Spam them in channel
+			my $channel = Irssi::channel_find($reminder{channel});
+			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
+		} else {
 			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
 	}
