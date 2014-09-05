@@ -133,9 +133,9 @@ Irssi::settings_add_bool('GummyBot','Gummy_JoinNom',1);
 Irssi::settings_add_bool('GummyBot','Gummy_Blink',1);
 Irssi::settings_add_str('GummyBot','Gummy_RootDir','');
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog');
-#Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata');
-Irssi::settings_add_str('GummyBot','Gummy_GreetFile','greets');
-Irssi::settings_add_str('GummyBot','Gummy_MemoFile','memos');
+Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata');
+#Irssi::settings_add_str('GummyBot','Gummy_GreetFile','greets');
+#Irssi::settings_add_str('GummyBot','Gummy_MemoFile','memos');
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd');
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s');
 Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s');
@@ -216,48 +216,48 @@ sub isgummyop {
 	}
 }
 
-#sub write_datastore {
-#	my %datastore;
-#	$datastore{greets}=\%greets;
-#	$datastore{memos}=\%memos;
-#	$datastore{reminders}=\@reminders;
-#	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
+sub write_datastore {
+	my %datastore;
+	$datastore{greets}=\%greets;
+	$datastore{memos}=\%memos;
+	$datastore{reminders}=\@reminders;
+	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
+}
+
+sub read_datastore {
+	my %datastore=();
+	%greets=();
+	%memos=();
+	@reminders=();
+	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
+		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
+		%greets = %{$datastore{greets}};
+		%memos = %{$datastore{memos}};
+		@reminders = @{$datastore{reminders}};
+	}
+}
+
+#sub write_greets {
+#	store \%greets, getdir(Irssi::settings_get_str('Gummy_GreetFile'));
 #}
 
-#sub read_datastore {
-#	my %datastore=();
+#sub read_greets {
 #	%greets=();
-#	%memos=();
-#	@reminders=();
-#	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
-#		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
-#		%greets = %{$datastore{greets}};
-#		%memos = %{$datastore{memos}};
-#		@reminders = @{$datastore{reminders}};
+#	if (-e getdir(Irssi::settings_get_str('Gummy_GreetFile'))) {
+#		%greets = %{retrieve(getdir(Irssi::settings_get_str('Gummy_GreetFile')))};
 #	}
 #}
 
-sub write_greets {
-	store \%greets, getdir(Irssi::settings_get_str('Gummy_GreetFile'));
-}
+#sub write_memos {
+#	store \%memos, getdir(Irssi::settings_get_str('Gummy_MemoFile'));
+#}
 
-sub read_greets {
-	%greets=();
-	if (-e getdir(Irssi::settings_get_str('Gummy_GreetFile'))) {
-		%greets = %{retrieve(getdir(Irssi::settings_get_str('Gummy_GreetFile')))};
-	}
-}
-
-sub write_memos {
-	store \%memos, getdir(Irssi::settings_get_str('Gummy_MemoFile'));
-}
-
-sub read_memos {
-	%memos=();
-	if (-e getdir(Irssi::settings_get_str('Gummy_MemoFile'))) {
-		%memos = %{retrieve(getdir(Irssi::settings_get_str('Gummy_MemoFile')))};
-	}
-}
+#sub read_memos {
+#	%memos=();
+#	if (-e getdir(Irssi::settings_get_str('Gummy_MemoFile'))) {
+#		%memos = %{retrieve(getdir(Irssi::settings_get_str('Gummy_MemoFile')))};
+#	}
+#}
 
 sub loadfunfile {
 	my $count=0;
@@ -280,13 +280,14 @@ sub loadfunfile {
 
 sub loadfunstuff {
 	my $count;
-	read_greets();
+
+	read_datastore();
 	$count = scalar keys %greets;
 	print("Loaded $count greets.");
-
-	read_memos();
 	$count = scalar keys %memos;
 	print("Loaded memos for $count nicks.");
+	$count = scalar @reminders;
+	print("Loaded $count reminders.");
 
 	$count = loadfunfile("buddha");
 	print("Loaded $count words of wisdom.");
@@ -713,12 +714,12 @@ sub cmd_autogreet {
 		my $greetnick = lc($nick);
 		if ($args eq "") {
 			delete $greets{$greetnick};
-			write_greets();
+			write_datastore();
 			gummydo($server,$target, "strikes your greeting from his databanks.");
 		}
 		else {
 			$greets{$greetnick} = $args;
-			write_greets();
+			write_datastore();
 			gummydo($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved!");
 		}
 	}
@@ -757,7 +758,7 @@ sub add_memo {
 	my $timestr;
 	$timestr = strftime('%Y/%m/%d %R %Z',localtime);
 	push(@{$memos{lc($to)}},"[$timestr] $from: $message");
-	write_memos();
+	write_datastore();
 }
 
 sub cmd_whoswho {
@@ -825,9 +826,8 @@ sub cmd_remindme {
 	}
 	# dump our reminder into the right spot in the list. If the reminder is after the last one, index will be at
 	# the position after the end of the list so it will naturally be added at the end.
-	print ("Inserting at index $index.");
 	splice @reminders,$index,0,\%reminder;
-	print ("Reminders now has " . scalar(@reminders) . " in it.");
+	write_datastore();
 
 	gummydo($server, $target, "saves it in his databank for later.");
 }
@@ -924,7 +924,7 @@ sub myevent {
 				gummydo($server,$target,"opens his mouth and a ticker tape pops out saying \"$_\"");
 			}
 			delete @memos{lc($nick)};
-			write_memos();
+			write_datastore();
 		}
 	}
 
