@@ -1,4 +1,4 @@
-'use strict;
+use strict;
 use vars qw($VERSION %IRSSI);
 use Irssi;
 use Storable;
@@ -963,9 +963,11 @@ sub blink_tick {
 		}
 	}
 	
+	my $changed = 0;
 	while (scalar(@reminders) > 0  && $reminders[0]->{delivery_time} <=  time) {
 		# pull it out of the list
 		my %reminder = %{shift(@reminders)};
+		$changed = 1;
 
 		# Look to see if the person is active in any channels
 		my $found=0;
@@ -990,6 +992,9 @@ sub blink_tick {
 			# If we didnt' find them in the activity list, log it as a memo.
 			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
+	}
+	if ($changed) {
+		write_datastore();
 	}
 
 	if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
