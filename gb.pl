@@ -6,8 +6,9 @@ use File::Spec;
 use Config::Tiny;
 use POSIX qw/strftime/;
 use LWP::Simple;
+use Switch;
 
-my $gummyver = "2.9.7";
+my $gummyver = "2.9.8";
 
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
@@ -21,6 +22,7 @@ my $lastupdate=time; # Keeps track of when we last loaded the fun stuff
 my $nomnick; # Keeps track of who gummy is attached to
 my %greets; # Holds the greeting messages
 my %memos; # Holds the current pending memos
+my @reminders=(); # Hold the list of pending reminders.
 my %commands; # Holds the table of commands.
 
 # Define the table of commands and their handlers.
@@ -104,6 +106,11 @@ my %commands; # Holds the table of commands.
 		cmd => \&cmd_yourip,
 		help => "Causes gummy to emit his local IP. You don't need this."
 	},
+	'remindme' => {
+		cmd => \&cmd_remindme,
+		short_help => "<delay time> <time units> <message>",
+		help => "Causes gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online and active (talked in the last 10 minutes) when the delay expires you'll be notified immediately, otherwise you'll be notified next time you're active."
+	},
 	'help' => {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
@@ -125,8 +132,9 @@ Irssi::settings_add_bool('GummyBot','Gummy_GreetOnEntry',0);
 Irssi::settings_add_bool('GummyBot','Gummy_JoinNom',1);
 Irssi::settings_add_bool('GummyBot','Gummy_Blink',1);
 Irssi::settings_add_str('GummyBot','Gummy_RootDir','');
-Irssi::settings_add_str('GummyBot','Gummy_GreetFile','greets');
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog');
+#Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata');
+Irssi::settings_add_str('GummyBot','Gummy_GreetFile','greets');
 Irssi::settings_add_str('GummyBot','Gummy_MemoFile','memos');
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd');
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s');
@@ -208,6 +216,27 @@ sub isgummyop {
 	}
 }
 
+#sub write_datastore {
+#	my %datastore;
+#	$datastore{greets}=\%greets;
+#	$datastore{memos}=\%memos;
+#	$datastore{reminders}=\@reminders;
+#	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
+#}
+
+#sub read_datastore {
+#	my %datastore=();
+#	%greets=();
+#	%memos=();
+#	@reminders=();
+#	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
+#		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
+#		%greets = %{$datastore{greets}};
+#		%memos = %{$datastore{memos}};
+#		@reminders = @{$datastore{reminders}};
+#	}
+#}
+
 sub write_greets {
 	store \%greets, getdir(Irssi::settings_get_str('Gummy_GreetFile'));
 }
@@ -218,7 +247,6 @@ sub read_greets {
 		%greets = %{retrieve(getdir(Irssi::settings_get_str('Gummy_GreetFile')))};
 	}
 }
-
 
 sub write_memos {
 	store \%memos, getdir(Irssi::settings_get_str('Gummy_MemoFile'));
@@ -701,26 +729,35 @@ sub cmd_autogreet {
 
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-		my $who;
-		my $timestr;
-		($who, $args) = split(/\s+/,$args,2);
-		$who = lc($who);
-		if ($args ne "" && $who ne "") {
-			if (flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-				$timestr = strftime('%Y/%m/%d %R %Z',localtime);
-				push(@{$memos{$who}},"[$timestr] $nick: $args");
-				write_memos();
-				gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
-			}
-			else {
-				gummydo($server,$target,"looks like he's overheated. Try again later.");
-			}
-		}
-	}
-	else {
+	if (!Irssi::settings_get_bool('Gummy_AllowMemo')) {
 		gummydo($server,$target,"ignores you as memos have been disabled.");
+		return;
 	}
+
+	my $who;
+	($who, $args) = split(/\s+/,$args,2);
+
+	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
+		gummydo($server,$target,"looks like he's overheated. Try again later.");
+		return;
+	}
+
+	if ($args eq "" || $who eq "") {
+		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
+		return;
+	}
+
+	add_memo($who, $nick, $args);
+
+	gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
+}
+
+sub add_memo {
+	my ($to, $from, $message) = @_;
+	my $timestr;
+	$timestr = strftime('%Y/%m/%d %R %Z',localtime);
+	push(@{$memos{lc($to)}},"[$timestr] $from: $message");
+	write_memos();
 }
 
 sub cmd_whoswho {
@@ -731,7 +768,6 @@ sub cmd_whoswho {
 	else {
 		gummydo($server,$target, "pulls out the list at https://docs.google.com/document/d/1XwQo7I7C3FsvQqeCzTzBTwTqGALdTbil2IMRYUMJu-s/edit?usp=sharing");
 	}
-
 }	
 
 sub cmd_yourip {
@@ -739,6 +775,63 @@ sub cmd_yourip {
 	chomp (my $ip = get('http://icanhazip.com'));
 	gummydo($server, $target, "spits out a ticker tape reading: $ip");
 }
+
+sub cmd_remindme {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args,3);
+	my $tick_scalar;
+	my %reminder;
+
+	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
+		gummydo($server,$target,"looks like he's overheated. Try again later.");
+		return;
+	}
+
+	if (!$params[0] && !$params[1] && !$params[2]) {
+		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
+		return;
+	}
+	if ($params[0] <= 0) {
+		gummydo($server, $target, "looks at you with a confused look. Delays should be a positive number.");	
+		return;
+	}
+
+	$params[1] = lc($params[1]);
+
+	if ($params[1] eq "m") {
+		$tick_scalar = 60;
+	} elsif ($params[1] eq "h") {
+		$tick_scalar = 3600;
+	} elsif ($params[1] eq "d") {
+		$tick_scalar = 86400;
+	} else {
+		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
+		return;
+	}	
+	
+	my $delivery_time = time+$params[0]*$tick_scalar;
+	$reminder{'delivery_time'}=$delivery_time;
+	$reminder{'message'}=$params[2];
+	$reminder{'nick'}=$nick;
+	# Consider nick tracking?
+	#$reminder{'tracked_nick'}=$nick;
+
+	# Locate the first item that is supposed to happen after ours.
+	my $index=0;
+	for ($index=0;$index < scalar(@reminders); $index++) {
+		if ($reminders[$index]->{'delivery_time'} > $delivery_time) {
+			last;
+		}
+	}
+	# dump our reminder into the right spot in the list. If the reminder is after the last one, index will be at
+	# the position after the end of the list so it will naturally be added at the end.
+	print ("Inserting at index $index.");
+	splice @reminders,$index,0,\%reminder;
+	print ("Reminders now has " . scalar(@reminders) . " in it.");
+
+	gummydo($server, $target, "saves it in his databank for later.");
+}
+
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -816,7 +909,7 @@ sub myevent {
 
 	$lastmsg = time;
 	if ($server->ischannel($target)) {
-		$activity{lc($target)}->{$nick} = time;
+		$activity{lc($target)}->{lc($nick)} = time;
 	}
 	$prefix = lc($prefix);
 
@@ -875,6 +968,7 @@ sub blink_tick {
 	}
 
 
+	# Prune the activity list.
 	foreach my $channame (keys %activity) {
 		my @prunelist=[];
 		my $key;
@@ -886,6 +980,30 @@ sub blink_tick {
 		}
 		foreach (@prunelist) {
 			delete( $activity{$channame}->{$_});
+		}
+	}
+	
+	while (scalar(@reminders) > 0  && $reminders[0]->{delivery_time} <=  time) {
+		# pull it out of the list
+		my %reminder = %{shift(@reminders)};
+
+		# Look to see if the person is active in any channels
+		my $found=0;
+		foreach my $channame (keys %activity) {
+			my %chanlist = %{$activity{$channame}};
+			my $targetnick = lc($reminder{nick});
+			my @nicks = keys %chanlist;
+			if (exists $chanlist{$targetnick}) {
+				# If so, ping them by privmsg
+				my $channel = Irssi::channel_find($channame);
+				gummydo($channel->{server}, $reminder{nick}, "reminds you: " . $reminder{message});
+				$found = 1;
+				last;
+			}
+		}
+		if (!$found) {
+			# If we didnt' find them in the activity list, log it as a memo.
+			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
 	}
 
@@ -902,7 +1020,7 @@ sub blink_tick {
 					}
 				}
 				if (Irssi::settings_get_bool('Gummy_Blink')) {
-					elsif (rand(1) < .9) {
+					if (rand(1) < .9) {
 						gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
 					}
 					else {
@@ -977,12 +1095,14 @@ sub nick_change {
 		$nomnick=$nick->{nick};
 	}
 	# Update their activity record to match the new nick
-	delete $activity{lc($channel->{name})}->{$oldnick};
-	$activity{lc($channel->{name})}->{$nick->{nick}}=time;
+	delete $activity{lc($channel->{name})}->{lc($oldnick)};
+	$activity{lc($channel->{name})}->{lc($nick->{nick})}=time;
 }
 
 sub check_release {
 	my ($server, $channel, $nick) = @_;
+	# Drop the user from the activity records so we don't message people who aren't here.
+	delete $activity{lc($channel->{name})}->{lc($nick)};
 	if (lc($nick) eq lc($nomnick)) {
 		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
 		$nomnick=undef;
