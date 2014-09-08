@@ -938,16 +938,7 @@ sub myevent {
 	}
 }
 
-sub blink_tick {
-	my $timesinceblink=time-$lastblink;
-	my $timesincemsg=time-$lastmsg;
-	my $timesinceupdate=time-$lastupdate;
-
-	if ( $timesinceupdate > 3600 ) {
-		loadfunstuff();
-	}
-
-
+sub prune_activity {
 	# Prune the activity list.
 	foreach my $channame (keys %activity) {
 		my @prunelist=[];
@@ -962,7 +953,9 @@ sub blink_tick {
 			delete( $activity{$channame}->{$_});
 		}
 	}
-	
+}
+
+sub deliver_reminders {
 	my $changed = 0;
 	while (scalar(@reminders) > 0  && $reminders[0]->{delivery_time} <=  time) {
 		# pull it out of the list
@@ -986,6 +979,20 @@ sub blink_tick {
 	if ($changed) {
 		write_datastore();
 	}
+}
+
+sub blink_tick {
+	my $timesinceblink=time-$lastblink;
+	my $timesincemsg=time-$lastmsg;
+	my $timesinceupdate=time-$lastupdate;
+
+	if ( $timesinceupdate > 3600 ) {
+		loadfunstuff();
+	}
+
+	prune_activity();
+
+	deliver_reminders();
 
 	if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
 		if ($gummyenabled != 0) {
