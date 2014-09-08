@@ -971,19 +971,24 @@ sub deliver_reminders {
 		my $channel;
 		my $found=0;
 
-		if ($reminder{channel} ne lc($reminder{nick})) {
+		if (lc($reminder{channel}) ne lc($reminder{nick})) {
 			if ($channel = Irssi::channel_find($reminder{channel})) {
-				if ($channel->nick_find($reminder{nick})) {
+				if ($channel->nick_find($reminder{nick}) || $channel->nick_find($reminder{tracked_nick})) {
 					$found = 1;
 				}
-				elsif ($channel->nick_find($reminder{tracked_nick})) {
+			}
+		} else {
+			foreach my $tmpchannel (Irssi::channels()) {
+				if ($tmpchannel->nick_find($reminder{nick}) || $tmpchannel->nick_find($reminder{tracked_nick})) {
+					$channel=$tmpchannel;
 					$found = 1;
+					last;
 				}
 			}
 		}
 
 		if ($found) {
-			gummydo($channel->{server}, $reminder{channel} , "reminds " . $reminder{nick} . ": " . $reminder{message});
+			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
 		} else {
 			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
