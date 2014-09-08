@@ -1136,7 +1136,7 @@ sub nick_quit {
 }
 sub nick_kick {
 	my ($server, $channel, $nick) = @_;
-	delete $activity{lc($channel)}->{$nick};	
+	delete $activity{lc($channel)->{name}}->{$nick};	
 	check_release($server,$channel, $nick);
 }
 
