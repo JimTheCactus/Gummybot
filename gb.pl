@@ -792,6 +792,7 @@ sub cmd_remindme {
 	$reminder{delivery_time}=$delivery_time;
 	$reminder{message}=$params[2];
 	$reminder{nick}=$nick;
+	$reminder{tracked_nick} = $nick;
 	$reminder{channel}=$target;
 
 	# Consider nick tracking?
@@ -975,6 +976,9 @@ sub deliver_reminders {
 				if ($channel->nick_find($reminder{nick})) {
 					$found = 1;
 				}
+				elsif ($channel->nick_find($reminder{tracked_nick})) {
+					$found = 1;
+				}
 			}
 		}
 
@@ -1092,6 +1096,12 @@ sub nick_change {
 	# Update their activity record to match the new nick
 	delete $activity{lc($channel->{name})}->{lc($oldnick)};
 	$activity{lc($channel->{name})}->{lc($nick->{nick})}=time;
+
+	foreach my $reminder (@reminders) {
+		if (lc($reminder->{tracked_nick}) eq lc($oldnick) || lc($reminder->{nick}) eq lc($oldnick)) {
+			$reminder->{tracked_nick} = $nick->{nick};
+		}
+	}
 }
 
 sub check_release {
