@@ -962,16 +962,24 @@ sub deliver_reminders {
 		my %reminder = %{shift(@reminders)};
 		$changed = 1;
 
-		# Look to see if the person is active in any channels
 		if ($reminder{channel} eq "") {
 			print "No channel provided. Defaulting to PM. (This should be rare.)";
 			$reminder{channel} = $reminder{nick};
 		}
-		# If they're active on that channel
-		if (exists $activity{$reminder{channel}}->{lc($reminder{nick})} && lc($reminder{channel}) ne lc($reminder{nick})) {
-			# Spam them in channel
-			my $channel = Irssi::channel_find($reminder{channel});
-			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
+
+		my $channel;
+		my $found=0;
+
+		if ($reminder{channel} ne lc($reminder{nick})) {
+			if ($channel = Irssi::channel_find($reminder{channel})) {
+				if ($channel->nick_find($reminder{nick})) {
+					$found = 1;
+				}
+			}
+		}
+
+		if ($found) {
+			gummydo($channel->{server}, $reminder{channel} , "reminds " . $reminder{nick} . ": " . $reminder{message});
 		} else {
 			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
