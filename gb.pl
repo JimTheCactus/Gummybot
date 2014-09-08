@@ -1,4 +1,4 @@
-ufuse strict;
+use strict;
 use vars qw($VERSION %IRSSI);
 use Irssi;
 use Storable;
@@ -792,6 +792,7 @@ sub cmd_remindme {
 	$reminder{delivery_time}=$delivery_time;
 	$reminder{message}=$params[2];
 	$reminder{nick}=$nick;
+	$reminder{tracked_nick} = $nick;
 	$reminder{channel}=$target;
 
 	# Consider nick tracking?
@@ -938,16 +939,7 @@ sub myevent {
 	}
 }
 
-sub blink_tick {
-	my $timesinceblink=time-$lastblink;
-	my $timesincemsg=time-$lastmsg;
-	my $timesinceupdate=time-$lastupdate;
-
-	if ( $timesinceupdate > 3600 ) {
-		loadfunstuff();
-	}
-
-
+sub prune_activity {
 	# Prune the activity list.
 	foreach my $channame (keys %activity) {
 		my @prunelist=[];
@@ -962,23 +954,36 @@ sub blink_tick {
 			delete( $activity{$channame}->{$_});
 		}
 	}
-	
+}
+
+sub deliver_reminders {
 	my $changed = 0;
 	while (scalar(@reminders) > 0  && $reminders[0]->{delivery_time} <=  time) {
 		# pull it out of the list
 		my %reminder = %{shift(@reminders)};
 		$changed = 1;
 
-		# Look to see if the person is active in any channels
 		if ($reminder{channel} eq "") {
 			print "No channel provided. Defaulting to PM. (This should be rare.)";
 			$reminder{channel} = $reminder{nick};
 		}
-		# If they're active on that channel
-		if (exists $activity{$reminder{channel}}->{lc($reminder{nick})} && lc($reminder{channel}) ne lc($reminder{nick})) {
-			# Spam them in channel
-			my $channel = Irssi::channel_find($reminder{channel});
-			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
+
+		my $channel;
+		my $found=0;
+
+		if ($reminder{channel} ne lc($reminder{nick})) {
+			if ($channel = Irssi::channel_find($reminder{channel})) {
+				if ($channel->nick_find($reminder{nick})) {
+					$found = 1;
+				}
+				elsif ($channel->nick_find($reminder{tracked_nick})) {
+					$found = 1;
+				}
+			}
+		}
+
+		if ($found) {
+			gummydo($channel->{server}, $reminder{channel} , "reminds " . $reminder{nick} . ": " . $reminder{message});
 		} else {
 			add_memo($reminder{nick}, "remindme", $reminder{message});
 		}
@@ -986,6 +991,20 @@ sub blink_tick {
 	if ($changed) {
 		write_datastore();
 	}
+}
+
+sub blink_tick {
+	my $timesinceblink=time-$lastblink;
+	my $timesincemsg=time-$lastmsg;
+	my $timesinceupdate=time-$lastupdate;
+
+	if ( $timesinceupdate > 3600 ) {
+		loadfunstuff();
+	}
+
+	prune_activity();
+
+	deliver_reminders();
 
 	if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
 		if ($gummyenabled != 0) {
@@ -1077,6 +1096,12 @@ sub nick_change {
 	# Update their activity record to match the new nick
 	delete $activity{lc($channel->{name})}->{lc($oldnick)};
 	$activity{lc($channel->{name})}->{lc($nick->{nick})}=time;
+
+	foreach my $reminder (@reminders) {
+		if (lc($reminder->{tracked_nick}) eq lc($oldnick) || lc($reminder->{nick}) eq lc($oldnick)) {
+			$reminder->{tracked_nick} = $nick->{nick};
+		}
+	}
 }
 
 sub check_release {
