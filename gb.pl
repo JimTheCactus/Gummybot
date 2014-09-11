@@ -109,7 +109,7 @@ my %commands; # Holds the table of commands.
 	'remindme' => {
 		cmd => \&cmd_remindme,
 		short_help => "<delay time> <time units> <message>",
-		help => "Causes gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online and active (talked in the last 10 minutes) when the delay expires you'll be notified immediately, otherwise you'll be notified next time you're active."
+		help => "Causes gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online you'll be notfied immediately, otherwise you will receive a gummy memo next time you're active."
 	},
 	'help' => {
 		cmd=>\&cmd_help,
