@@ -1174,7 +1174,7 @@ sub nick_quit {
 sub nick_kick {
 	my ($server, $channel, $nick) = @_;
 	eval {
-		check_release($server,$channel->{name}, $nick);
+		check_release($server,$channel, $nick);
 	};
 	if ($@) {
 		logtext("ERROR","nick_kick",$@);
