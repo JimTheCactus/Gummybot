@@ -941,7 +941,7 @@ sub myevent {
 	};
 
 	if ($@) {
-		gummylog("ERROR","myevent",$@);
+		logtext("ERROR","myevent",$@);
 		print("GUMMY CRITICAL: myevent, $@");
 	}
 }
@@ -1046,7 +1046,7 @@ sub blink_tick {
 		}	
 	};
 	if ($@) {
-		gummylog("ERROR","blink_tick",$@);
+		logtext("ERROR","blink_tick",$@);
 		print("GUMMY CRITICAL: blink_tick, $@");
 	}
 }
@@ -1095,7 +1095,7 @@ sub join_pounce {
 		}
 	};
 	if ($@) {
-		gummylog("ERROR","join_pounce",$@);
+		logtext("ERROR","join_pounce",$@);
 		print("GUMMY CRITICAL: join_pounce, $@");
 	}
 }
@@ -1129,7 +1129,7 @@ sub nick_change {
 		}
 	};
 	if ($@) {
-		gummylog("ERROR","nick_change",$@);
+		logtext("ERROR","nick_change",$@);
 		print("GUMMY CRITICAL: nick_change, $@");
 	}
 }
@@ -1151,7 +1151,7 @@ sub nick_part {
 		check_release($server,$channel,$nick)
 	};
 	if ($@) {
-		gummylog("ERROR","check_release",$@);
+		logtext("ERROR","check_release",$@);
 		print("GUMMY CRITICAL: check_release, $@");
 	}
 	#delete $activity{lc($channel)}->{$nick};	
@@ -1167,7 +1167,7 @@ sub nick_quit {
 		}
 	};
 	if ($@) {
-		gummylog("ERROR","nick_quit",$@);
+		logtext("ERROR","nick_quit",$@);
 		print("GUMMY CRITICAL: nick_quit, $@");
 	}
 }
@@ -1177,7 +1177,7 @@ sub nick_kick {
 		check_release($server,$channel->{name}, $nick);
 	};
 	if ($@) {
-		gummylog("ERROR","nick_kick",$@);
+		logtext("ERROR","nick_kick",$@);
 		print("GUMMY CRITICAL: nick_kick, $@");
 	}
 }
@@ -1236,7 +1236,7 @@ sub action_event {
 		}
 	};
 	if ($@) {
-		gummylog("ERROR","action_event",$@);
+		logtext("ERROR","action_event",$@);
 		print("GUMMY CRITICAL: action_event, $@");
 	}	
 }
