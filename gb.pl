@@ -881,6 +881,19 @@ sub parse_command {
 	}
 }
 
+sub deliver_memos {
+	my ($server, $target, $nick) = @_;
+	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
+		if (exists $memos{lc($nick)}) {
+			foreach (@{$memos{lc($nick)}}) {
+				gummydo($server,$target,"opens his mouth and prints a message for $nick saying, \"$_\"");
+			}
+			delete @memos{lc($nick)};
+			write_datastore();
+		}
+	}
+}
+
 sub myevent {
 	my ($server, $data, $nick, $address) = @_;
 	eval {
@@ -897,18 +910,10 @@ sub myevent {
 
 
 		if (lc($target) eq lc($server->{nick})) {
-			$target = $nick
+			$target = $nick;
 		}
 
-		if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-			if (exists $memos{lc($nick)}) {
-				foreach (@{$memos{lc($nick)}}) {
-					gummydo($server,$target,"opens his mouth and a ticker tape pops out saying \"$_\"");
-				}
-				delete @memos{lc($nick)};
-				write_datastore();
-			}
-		}
+		deliver_memos($server, $target, $nick);
 
 		if ($prefix eq "!gb" || $prefix eq "!gummy" || $prefix eq "!gummybot") {
 			# If we supposed to be processing commands
