@@ -1053,29 +1053,31 @@ sub deliver_reminders {
 # Takes two arguments, oldnick and newnick. Pass undef to oldnick for a join.
 sub add_alias {
 	my ($oldnick, $newnick) = @_;
-	if (!defined($oldnick)) { # If they're logging back in
-		if (defined($aliases{$newnick})) { #and we know about them already
+	my $lcold = lc($oldnick);
+	my $lcnew = lc($newnick);
+	if (!defined($lcold)) { # If they're logging back in
+		if (defined($aliases{$lcnew})) { #and we know about them already
 			return; # Bail (i.e. re-attach to old aliases.)
 		}
 	}
 	my @blankarray = ();
 	my $newref = \@blankarray;
 
-	if (defined($oldnick)) { # If they're changing nicks
-		if (defined($aliases{$oldnick})) { # And their old nick has an entry
-			$newref = $aliases{$oldnick}; # Grab it,
-			delete $aliases{$oldnick}; # and remove the old nick
-			unshift @$newref, $oldnick; # Add the old nick to the benning of the list
-			if (scalar(@$newref) > 5) { # if there's more than 5
-				pop @$newref; # pop the oldest one off the end.
-			}
+	if (defined($lcold)) { # If they're changing nicks
+		if (defined($aliases{$lcold})) { # And their old nick has an entry
+			$newref = $aliases{$lcold}; # Grab it,
+			delete $aliases{$lcold}; # and remove the old nick
+		}
+		unshift @$newref, $oldnick; # Add the old nick to the benning of the list
+		if (scalar(@$newref) > 5) { # if there's more than 5
+			pop @$newref; # pop the oldest one off the end.
 		}
 	}
-	if (defined($aliases{$newnick})) { # if they're stepping into a newer nick we know about
-		push @$newref, @{$aliases{$newnick}}; # merge them (assuming the clobbered nick is lower priority)
+	if (defined($aliases{$lcnew})) { # if they're stepping into a newer nick we know about
+		push @$newref, @{$aliases{$lcnew}}; # merge them (assuming the clobbered nick is lower priority)
 		@$newref = @$newref[0..4]; # And trim the list to 5
 	}
-	$aliases{$newnick} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
+	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
 }
 
 sub blink_tick {
