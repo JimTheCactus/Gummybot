@@ -835,8 +835,8 @@ sub cmd_aka {
 	my @params = split(/\s+/, $args);
 	if ($params[0]) {
 		my $who = $params[0];
-		if (exists $aliases{$who}) {
-			my $whoelse = $aliases{$who};
+		if (exists $aliases{lc($who)}) {
+			my $whoelse = $aliases{lc($who)};
 			if (scalar(@$whoelse)) {		
 				gummydo($server, $target, "$who has also been known as @$whoelse.");
 			}
@@ -1286,6 +1286,11 @@ sub gummy_command {
 		logtext("/gummy reload");
 		loadfunstuff();
 		$wind->print("Gummybot funstuff database reloaded.");
+	}
+	elsif ($cmd eq "save") {
+		logtext("/gummy save");
+		write_datastore();
+		$wind->print("Datastore Saved.");		
 	}
 	elsif ($cmd eq "active") {
 		my $key;
