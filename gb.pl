@@ -8,7 +8,7 @@ use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
 
-my $gummyver = "2.9.8";
+my $gummyver = "2.9.9";
 
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
@@ -24,6 +24,7 @@ my %greets; # Holds the greeting messages
 my %memos; # Holds the current pending memos
 my @reminders=(); # Hold the list of pending reminders.
 my %commands; # Holds the table of commands.
+my %aliases; # Holds the list of known aliases for current nicknames.
 
 # Define the table of commands and their handlers.
 %commands = (
@@ -104,12 +105,17 @@ my %commands; # Holds the table of commands.
 	},
 	'yourip' => {
 		cmd => \&cmd_yourip,
-		help => "Causes gummy to emit his local IP. You don't need this."
+		help => "Causes Gummy to emit his local IP. You don't need this."
 	},
 	'remindme' => {
 		cmd => \&cmd_remindme,
 		short_help => "<delay time> <time units> <message>",
-		help => "Causes gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online you'll be notfied immediately, otherwise you will receive a gummy memo next time you're active."
+		help => "Causes Gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online you'll be notfied immediately, otherwise you will receive a gummy memo next time you're active."
+	},
+	'aka' => {
+		cmd => \&cmd_aka,
+		short_help => "<nick>",
+		help => "Causes Gummy to emit up to 5 previous nicknames for the specified nick."
 	},
 	'help' => {
 		cmd=>\&cmd_help,
@@ -221,6 +227,7 @@ sub write_datastore {
 	$datastore{greets}=\%greets;
 	$datastore{memos}=\%memos;
 	$datastore{reminders}=\@reminders;
+	$datastore{aliases}=\%aliases;
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
 }
 
@@ -229,11 +236,21 @@ sub read_datastore {
 	%greets=();
 	%memos=();
 	@reminders=();
+	%aliases=();
 	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
 		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
-		%greets = %{$datastore{greets}};
-		%memos = %{$datastore{memos}};
-		@reminders = @{$datastore{reminders}};
+		if (defined($datastore{greets})) {
+			%greets = %{$datastore{greets}};
+		}
+		if (defined($datastore{memos})) {
+			%memos = %{$datastore{memos}};
+		}
+		if (defined($datastore{reminders})) {
+			@reminders = @{$datastore{reminders}};
+		}
+		if (defined($datastore{aliases})) {
+			%aliases = %{$datastore{aliases}};
+		}
 	}
 }
 
@@ -813,6 +830,29 @@ sub cmd_remindme {
 	gummydo($server, $target, "saves it in his databank for later.");
 }
 
+sub cmd_aka {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if ($params[0]) {
+		my $who = $params[0];
+		if (exists $aliases{$who}) {
+			my $whoelse = $aliases{$who};
+			if (scalar(@$whoelse)) {		
+				gummydo($server, $target, "$who has also been known as @$whoelse.");
+			}
+			else {
+				gummydo($server, $target, "$who has no known aliases.");
+			}
+		}
+		else {
+			gummydo($server, $target, "looks around to everypony else, he doesn't know any aliases for $who.");
+		}
+	}
+	else {
+		gummydo($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
+	}
+}
+
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -1010,6 +1050,34 @@ sub deliver_reminders {
 	}
 }
 
+# Takes two arguments, oldnick and newnick. Pass undef to oldnick for a join.
+sub add_alias {
+	my ($oldnick, $newnick) = @_;
+	if (!defined($oldnick)) { # If they're logging back in
+		if (defined($aliases{$newnick})) { #and we know about them already
+			return; # Bail (i.e. re-attach to old aliases.)
+		}
+	}
+	my @blankarray = ();
+	my $newref = \@blankarray;
+
+	if (defined($oldnick)) { # If they're changing nicks
+		if (defined($aliases{$oldnick})) { # And their old nick has an entry
+			$newref = $aliases{$oldnick}; # Grab it,
+			delete $aliases{$oldnick}; # and remove the old nick
+			unshift @$newref, $oldnick; # Add the old nick to the benning of the list
+			if (scalar(@$newref) > 5) { # if there's more than 5
+				pop @$newref; # pop the oldest one off the end.
+			}
+		}
+	}
+	if (defined($aliases{$newnick})) { # if they're stepping into a newer nick we know about
+		push @$newref, @{$aliases{$newnick}}; # merge them (assuming the clobbered nick is lower priority)
+		@$newref = @$newref[0..4]; # And trim the list to 5
+	}
+	$aliases{$newnick} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
+}
+
 sub blink_tick {
 	eval {
 		my $timesinceblink=time-$lastblink;
@@ -1072,8 +1140,11 @@ sub join_pounce {
 	eval {
 		# Bail if we'er turned off.
 		if ($gummyenabled == 0 || !Irssi::settings_get_bool('Gummy_JoinNom')) { return; }
-	
+
 		my ($server, $channame, $nick, $addr) = @_;
+
+		add_alias(undef,$nick);
+
 		if (Irssi::settings_get_bool('Gummy_AllowAutogreet') && Irssi::settings_get_bool('Gummy_GreetOnEntry')) {
 			do_greet($server, $channame, $nick, $nick);
 		}
@@ -1108,6 +1179,8 @@ sub join_pounce {
 sub nick_change {
 	my ($channel, $nick, $oldnick) = @_;
 	eval {
+		add_alias($oldnick,$nick->{nick});
+
 		if (Irssi::settings_get_bool('Gummy_AllowAutogreet')) {
 			if (!Irssi::settings_get_bool('Gummy_GreetOnEntry')) {
 				do_greet($channel->{server},$channel->{name},$oldnick, $nick->{nick});
