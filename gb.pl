@@ -1,5 +1,6 @@
 use strict;
 use vars qw($VERSION %IRSSI);
+use POSIX;
 use Irssi;
 use Storable;
 use File::Spec;
@@ -177,7 +178,7 @@ sub getdir {
 
 sub logtext {
 	open LOGFILE, ">> ".getdir(Irssi::settings_get_str('Gummy_LogFile'));
-	print LOGFILE time;
+	print LOGFILE POSIX::strftime("%Y%m%d %H:%M:%S", localtime);
 	print LOGFILE ":@_\n";
 	close LOGFILE;
 }
@@ -1055,29 +1056,44 @@ sub add_alias {
 	my ($oldnick, $newnick) = @_;
 	my $lcold = lc($oldnick);
 	my $lcnew = lc($newnick);
-	if (!defined($lcold)) { # If they're logging back in
+
+	#logtext("ALIASEVENT START '$oldnick' \[$lcold\] is now '$newnick' \[$lcnew\]");
+
+	if (!defined $oldnick) { # If they're logging back in (Do not use lcold! lc(undef) = "", NOT undef.)
 		if (defined($aliases{$lcnew})) { #and we know about them already
+			#logtext("ALIASEVENT STOP login and reattach. List for $lcnew is now " . join(",",@{$aliases{$lcnew}}));
 			return; # Bail (i.e. re-attach to old aliases.)
 		}
 	}
+
 	my @blankarray = ();
 	my $newref = \@blankarray;
 
-	if (defined($lcold)) { # If they're changing nicks
+	if (defined $oldnick) { # If they're changing nicks (do NOT use lcold!)
 		if (defined($aliases{$lcold})) { # And their old nick has an entry
 			$newref = $aliases{$lcold}; # Grab it,
+			#logtext("ALIASEVENT FOUND old list. Temp list is now " . join(",",@$newref));
+			
 			delete $aliases{$lcold}; # and remove the old nick
+
+			#logtext("ALIASEVENT DELETE removed old aliases entry for " . $lcold);
 		}
 		unshift @$newref, $oldnick; # Add the old nick to the benning of the list
+		#logtext("ALIASEVENT ADD added " . $oldnick .". Temp list is now " . join(",",@$newref));
 		if (scalar(@$newref) > 5) { # if there's more than 5
 			pop @$newref; # pop the oldest one off the end.
+			#logtext("ALIASEVENT TRIM removed excess entry. Temp list is now " . join(",",@$newref));
 		}
 	}
 	if (defined($aliases{$lcnew})) { # if they're stepping into a newer nick we know about
 		push @$newref, @{$aliases{$lcnew}}; # merge them (assuming the clobbered nick is lower priority)
-		@$newref = @$newref[0..4]; # And trim the list to 5
+		if (scalar(@$newref) > 5) { # if there's more than 5
+			@$newref = @$newref[0..4]; # trim the list.
+		}
+		#logtext("ALIASEVENT MERGE Found existing list at " . $lcnew . " and merged entries " . join(",",@{$aliases{$lcnew}}) . ". Temp list is now " . join(",",@$newref));
 	}
 	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
+	#logtext("ALIASEVENT COMMIT Commited new list. List for $lcnew is now " . join(",",@{$aliases{$lcnew}}));
 }
 
 sub blink_tick {
@@ -1140,35 +1156,39 @@ sub do_greet {
 
 sub join_pounce {
 	eval {
-		# Bail if we'er turned off.
-		if ($gummyenabled == 0 || !Irssi::settings_get_bool('Gummy_JoinNom')) { return; }
-
 		my ($server, $channame, $nick, $addr) = @_;
 
+		# Manage the alias database.
 		add_alias(undef,$nick);
+
+		# Bail if we're turned off.
+		if ($gummyenabled == 0) { return; }
 
 		if (Irssi::settings_get_bool('Gummy_AllowAutogreet') && Irssi::settings_get_bool('Gummy_GreetOnEntry')) {
 			do_greet($server, $channame, $nick, $nick);
 		}
+
+		if (Irssi::settings_get_bool('Gummy_JoinNom')) {
 	
-		if (rand(1) > .9) {
-			# Rarely show the fun message.
-			if (flood("pounce",$channame,Irssi::settings_get_time('Gummy_NomFloodLimit')/1000)) {
-				if (rand(1) < .995 || defined $nomnick) {
-					if (defined $nomnick) {
-						gummydo($server,$channame,"leaps from ${nomnick}'s tail to ${nick}'s.");
-					}
-					elsif (rand(1)<.95) {
-						gummydo($server,$channame,"leaps into the air and noms onto ${nick}'s tail.");
+			if (rand(1) > .9) {
+				# Rarely show the fun message.
+				if (flood("pounce",$channame,Irssi::settings_get_time('Gummy_NomFloodLimit')/1000)) {
+					if (rand(1) < .995 || defined $nomnick) {
+						if (defined $nomnick) {
+							gummydo($server,$channame,"leaps from ${nomnick}'s tail to ${nick}'s.");
+						}
+						elsif (rand(1)<.95) {
+							gummydo($server,$channame,"leaps into the air and noms onto ${nick}'s tail.");
+						}
+						else {
+							gummydo($server,$channame,"leaps into the air, does a triple somersault into a clean swan dive, and then noms onto ${nick}'s tail.");
+						}
 					}
 					else {
-						gummydo($server,$channame,"leaps into the air, does a triple somersault into a clean swan dive, and then noms onto ${nick}'s tail.");
+						gummydo($server,$channame,"turns and looks evilly at $nick as they enter the channel. The slight grinding of gears preceeds a tick in his movement. It could just be a trick of the light, but it almost seems as though his eyes glow, just for a little bit.");
 					}
+					$nomnick=$nick;
 				}
-				else {
-					gummydo($server,$channame,"turns and looks evilly at $nick as they enter the channel. The slight grinding of gears preceeds a tick in his movement. It could just be a trick of the light, but it almost seems as though his eyes glow, just for a little bit.");
-				}
-				$nomnick=$nick;
 			}
 		}
 	};
