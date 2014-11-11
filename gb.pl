@@ -5,6 +5,7 @@ use Irssi;
 use Storable;
 use File::Spec;
 use Config::Tiny;
+use List::MoreUtils qw(uniq);
 use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
@@ -1057,11 +1058,9 @@ sub add_alias {
 	my $lcold = lc($oldnick);
 	my $lcnew = lc($newnick);
 
-	#logtext("ALIASEVENT START '$oldnick' \[$lcold\] is now '$newnick' \[$lcnew\]");
 
 	if (!defined $oldnick) { # If they're logging back in (Do not use lcold! lc(undef) = "", NOT undef.)
 		if (defined($aliases{$lcnew})) { #and we know about them already
-			#logtext("ALIASEVENT STOP login and reattach. List for $lcnew is now " . join(",",@{$aliases{$lcnew}}));
 			return; # Bail (i.e. re-attach to old aliases.)
 		}
 	}
@@ -1072,28 +1071,23 @@ sub add_alias {
 	if (defined $oldnick) { # If they're changing nicks (do NOT use lcold!)
 		if (defined($aliases{$lcold})) { # And their old nick has an entry
 			$newref = $aliases{$lcold}; # Grab it,
-			#logtext("ALIASEVENT FOUND old list. Temp list is now " . join(",",@$newref));
-			
-			delete $aliases{$lcold}; # and remove the old nick
 
-			#logtext("ALIASEVENT DELETE removed old aliases entry for " . $lcold);
+			delete $aliases{$lcold}; # and remove the old nick
 		}
 		unshift @$newref, $oldnick; # Add the old nick to the benning of the list
-		#logtext("ALIASEVENT ADD added " . $oldnick .". Temp list is now " . join(",",@$newref));
+		@$newref = uniq @$newref; # Clean up any duplicates created by adding the new nick.
 		if (scalar(@$newref) > 5) { # if there's more than 5
 			pop @$newref; # pop the oldest one off the end.
-			#logtext("ALIASEVENT TRIM removed excess entry. Temp list is now " . join(",",@$newref));
 		}
 	}
 	if (defined($aliases{$lcnew})) { # if they're stepping into a newer nick we know about
-		push @$newref, @{$aliases{$lcnew}}; # merge them (assuming the clobbered nick is lower priority)
+		push($newref, @{$aliases{$lcnew}}); # merge them (assuming the clobbered nick is lower priority)
+		@$newref = uniq @$newref; #scrub any duplicates from the merged list
 		if (scalar(@$newref) > 5) { # if there's more than 5
 			@$newref = @$newref[0..4]; # trim the list.
 		}
-		#logtext("ALIASEVENT MERGE Found existing list at " . $lcnew . " and merged entries " . join(",",@{$aliases{$lcnew}}) . ". Temp list is now " . join(",",@$newref));
 	}
 	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
-	#logtext("ALIASEVENT COMMIT Commited new list. List for $lcnew is now " . join(",",@{$aliases{$lcnew}}));
 }
 
 sub blink_tick {
@@ -1103,6 +1097,8 @@ sub blink_tick {
 		my $timesinceupdate=time-$lastupdate;
 
 		if ( $timesinceupdate > 3600 ) {
+			print "Doing hourly write of datastore...";
+			write_datastore();
 			loadfunstuff();
 		}
 
