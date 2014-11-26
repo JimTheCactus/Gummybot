@@ -941,18 +941,23 @@ sub myevent {
 	eval {
 		my ($target, $text) = split(/ :/, $data, 2);
 		my $curwind = Irssi::active_win;
-		my ($prefix,$cmd, $args) = split(/\s+/,$text,3);
-
-
-		$lastmsg = time;
-		if ($server->ischannel($target)) {
-			$activity{lc($target)}->{lc($nick)} = time;
-		}
+		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
 		$prefix = lc($prefix);
 
 
-		if (lc($target) eq lc($server->{nick})) {
-			$target = $nick;
+		$lastmsg = time;
+		if ($server->ischannel($target)) { # If this a real channel
+			$activity{lc($target)}->{lc($nick)} = time; # flag the activity
+
+		}
+
+
+		if (lc($target) eq lc($server->{nick})) { # If this is a direct message
+			$target = $nick; # Pivot the target back to the sender
+			if ($prefix ne "!gb" && $prefix ne "!gummy" && $prefix ne "!gummybot") { # And if this isn't prefixed...
+				($cmd, $args) = split(/\s+/,$text,2); # Assume that it's a naked command (no prefix: "memo test My memo" instead of "!gb memo test My memo")
+				$prefix = "!gb"; # and inject the appropriate prefix.
+			}
 		}
 
 		deliver_memos($server, $target, $nick);
