@@ -195,8 +195,9 @@ sub enablegummy {
 	$gummyenabled = 1;
 	$lastblink=time;
 	$lastmsg=time;
-	$blinkhandle=Irssi::timeout_add(60000,"blink_tick", "") or print "Unable to create timeout.";
+	read_datastore();
 	loadfunstuff();
+	$blinkhandle=Irssi::timeout_add(60000,"blink_tick", "") or print "Unable to create timeout.";
 	logtext("Gummy Enabled.");
 	if (lc($_[0]) ne "quiet") {
 		foreach (Irssi::channels()) {
@@ -278,7 +279,6 @@ sub loadfunfile {
 sub loadfunstuff {
 	my $count;
 
-	read_datastore();
 	$count = scalar keys %greets;
 	print("Loaded $count greets.");
 	$count = scalar keys %memos;
@@ -1096,20 +1096,19 @@ sub add_alias {
 }
 
 sub blink_tick {
+	# This event triggers once a minute and is used to manage administrative tasks and blinks (if enabled.)
 	eval {
 		my $timesinceblink=time-$lastblink;
 		my $timesincemsg=time-$lastmsg;
 		my $timesinceupdate=time-$lastupdate;
 
-		if ( $timesinceupdate > 3600 ) {
-			print "Doing hourly write of datastore...";
-			write_datastore();
-			loadfunstuff();
+		if ( $timesinceupdate > 3600 ) { # If at least an hour has passed since we pulled the funstuff database.
+			write_datastore(); # Backup the datastore to the disk.
+			loadfunstuff(); # Load the funstuff database to pull up any changes.
 		}
 
-		prune_activity();
-
-		deliver_reminders();
+		prune_activity(); # Clean up the activity data
+		deliver_reminders(); # Message people with any reminders they've asked for.
 
 		if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
 			if ($gummyenabled != 0) {
