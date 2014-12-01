@@ -26,7 +26,7 @@ my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
 my %funstuff; # Holds the various replacement data
 my %funsubs; # Holds the processed hash of replacement data
-my $blinkhandle; # Holds the handle to the maintenance event timer.
+my $timerhandle; # Holds the handle to the maintenance event timer.
 my $lastblink; # Keeps track of the last time we blinked
 my $lastmsg; # Keeps track of the last time we saw traffic
 my %activity; # Keeps track of when we last saw a specific person
@@ -74,6 +74,11 @@ Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m'); # Sets the ra
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's tele-commands 
 Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
 
+#
+# Primary Support Functions
+#
+
+
 # getdir(file)
 # Returns the full path to a file after adjusting for the root directory.
 sub getdir {
@@ -113,7 +118,7 @@ sub enablegummy {
 	$lastmsg=time;
 	read_datastore();
 	loadfunstuff();
-	$blinkhandle=Irssi::timeout_add(60000,"blink_tick", "") or print "Unable to create timeout.";
+	$timerhandle=Irssi::timeout_add(60000,"event_minutely_tick", "") or print "Unable to create timeout.";
 	logtext("Gummy Enabled.");
 	if (lc($_[0]) ne "quiet") {
 		foreach (Irssi::channels()) {
@@ -126,7 +131,7 @@ sub enablegummy {
 # Stops gummy.
 sub disablegummy {
 	$gummyenabled = 0;
-	Irssi::timeout_remove($blinkhandle) or print "Unable to kill timer handle.";
+	Irssi::timeout_remove($timerhandle) or print "Unable to kill timer handle.";
 	logtext("Gummy Disabled.");
 }
 
@@ -309,7 +314,6 @@ sub loadfunstuff {
 
 # dofunsubs(server, channel, text)
 # Does appropriate funstuff substitutions on the text and returns the adjusted text.
-
 sub dofunsubs {
 	my ($server, $channame, $text) = @_;
 	my $count=0;
@@ -361,7 +365,6 @@ sub dofunsubs {
 # gummydo(server, channel, text)
 # Causes gummy to emit the text in an action. This method is preferred over
 # gummysay as it won't trigger bots.
-
 sub gummydo {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
@@ -979,6 +982,12 @@ sub cmd_off {
 	}
 }
 
+
+#
+# Event Support Functions
+#
+
+
 sub parse_command {
 	my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
 	$cmd = lc($cmd);
@@ -1008,68 +1017,6 @@ sub deliver_memos {
 			delete @memos{lc($nick)};
 			write_datastore();
 		}
-	}
-}
-
-sub myevent {
-	my ($server, $data, $nick, $address) = @_;
-	eval {
-		my ($target, $text) = split(/ :/, $data, 2);
-		my $curwind = Irssi::active_win;
-		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
-		$prefix = lc($prefix);
-
-
-		$lastmsg = time;
-		if ($server->ischannel($target)) { # If this a real channel
-			$activity{lc($target)}->{lc($nick)} = time; # flag the activity
-
-		}
-
-
-		if (lc($target) eq lc($server->{nick})) { # If this is a direct message
-			$target = $nick; # Pivot the target back to the sender
-			if ($prefix ne "!gb" && $prefix ne "!gummy" && $prefix ne "!gummybot") { # And if this isn't prefixed...
-				($cmd, $args) = split(/\s+/,$text,2); # Assume that it's a naked command (no prefix: "memo test My memo" instead of "!gb memo test My memo")
-				$prefix = "!gb"; # and inject the appropriate prefix.
-			}
-		}
-
-		deliver_memos($server, $target, $nick);
-
-		if ($prefix eq "!gb" || $prefix eq "!gummy" || $prefix eq "!gummybot") {
-			# If we supposed to be processing commands
-			if ($gummyenabled !=0) {
-				# and the user isn't flooded
-				if (nickflood($nick,Irssi::settings_get_time('Gummy_NickFloodLimit')/1000)) {
-					# nor is gummy himself
-					if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
-						logtext("$nick PRIVMSG $data");
-						# sub out the fun stuff
-						$args = dofunsubs($server, $target, $args);
-						# and run the command (if appropriate)
-						if (!parse_command(\%commands,$server, $curwind, $target, $nick, $cmd, $args)) {
-							gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
-						}
-					}
-					else {
-						print("Denied! $target is flooded.");
-					}	
-				}
-				else {
-					print("Denied! $nick is flooded.");
-				}
-			}
-			elsif (lc($cmd) eq "on") {
-				cmd_on($server,$curwind,$target,$nick, $args);
-			}
-	
-		}
-	};
-
-	if ($@) {
-		logtext("ERROR","myevent",$@);
-		print("GUMMY CRITICAL: myevent, $@");
 	}
 }
 
@@ -1170,53 +1117,6 @@ sub add_alias {
 	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
 }
 
-sub blink_tick {
-	# This event triggers once a minute and is used to manage administrative tasks and blinks (if enabled.)
-	eval {
-		my $timesinceblink=time-$lastblink;
-		my $timesincemsg=time-$lastmsg;
-		my $timesinceupdate=time-$lastupdate;
-
-		if ( $timesinceupdate > 3600 ) { # If at least an hour has passed since we pulled the funstuff database.
-			write_datastore(); # Backup the datastore to the disk.
-			loadfunstuff(); # Load the funstuff database to pull up any changes.
-		}
-
-		prune_activity(); # Clean up the activity data
-		deliver_reminders(); # Message people with any reminders they've asked for.
-
-		if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
-			if ($gummyenabled != 0) {
-				foreach (Irssi::channels()) {
-					if (defined $nomnick) {
-						if (rand(1) < .9) {
-							gummydo($_->{server},$_->{name},"lazily drops off of ${nomnick}'s tail.");
-							$nomnick=undef;
-						}
-						else {
-							gummydo($_->{server},$_->{name},"thrashes a bit on ${nomnick}'s tail.");
-						}
-					}
-					if (Irssi::settings_get_bool('Gummy_Blink')) {
-						if (rand(1) < .9) {
-							gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
-						}
-						else {
-							gummysay($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
-							gummydo($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
-						}
-					}
-				}
-				$lastblink=time;
-			}
-		}	
-	};
-	if ($@) {
-		logtext("ERROR","blink_tick",$@);
-		print("GUMMY CRITICAL: blink_tick, $@");
-	}
-}
-
 sub do_greet {
 	my ($server, $target, $nick, $dispnick) = @_;
 	if (flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
@@ -1229,7 +1129,135 @@ sub do_greet {
 	}
 }
 
-sub join_pounce {
+sub check_release {
+	my ($server, $channel, $nick) = @_;
+	# Drop the user from the activity records so we don't message people who aren't here.
+	delete $activity{lc($channel)}->{$nick};	
+	#delete $activity{lc($channel->{name})}->{lc($nick)};
+	if (lc($nick) eq lc($nomnick)) {
+		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
+		$nomnick=undef;
+	}
+}
+
+sub do_blink() {
+	my $timesincemsg=time-$lastmsg;
+	my $timesinceblink=time-$lastblink;
+	if ( $timesinceblink > Irssi::settings_get_time('Gummy_BlinkFloodLimit')/1000  && $timesincemsg > Irssi::settings_get_time('Gummy_BlinkTimeout')/1000) {
+		if ($gummyenabled != 0) {
+			foreach (Irssi::channels()) {
+				if (defined $nomnick) {
+					if (rand(1) < .9) {
+						gummydo($_->{server},$_->{name},"lazily drops off of ${nomnick}'s tail.");
+						$nomnick=undef;
+					}
+					else {
+						gummydo($_->{server},$_->{name},"thrashes a bit on ${nomnick}'s tail.");
+					}
+				}
+				if (Irssi::settings_get_bool('Gummy_Blink')) {
+					if (rand(1) < .9) {
+						gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
+					}
+					else {
+						gummysay($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
+						gummydo($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
+					}
+				}
+			}
+			$lastblink=time;
+		}
+	}
+}
+
+
+#
+# Events
+#
+
+sub event_minutely_tick {
+	# This event triggers once a minute and is used to manage administrative tasks and blinks (if enabled.)
+	eval {
+		my $timesinceupdate=time-$lastupdate;
+
+		if ( $timesinceupdate > 3600 ) { # If at least an hour has passed since we pulled the funstuff database.
+			write_datastore(); # Backup the datastore to the disk.
+			loadfunstuff(); # Load the funstuff database to pull up any changes.
+		}
+
+		prune_activity(); # Clean up the activity data
+		deliver_reminders(); # Message people with any reminders they've asked for.
+
+		do_blink(); # Do any blink related activities
+	};
+	if ($@) {
+		logtext("ERROR","event_minutely_tick",$@);
+		print("GUMMY CRITICAL: event_minutely_tick, $@");
+	}
+}
+
+sub event_privmsg {
+	my ($server, $data, $nick, $address) = @_;
+	eval {
+		my ($target, $text) = split(/ :/, $data, 2);
+		my $curwind = Irssi::active_win;
+		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
+		$prefix = lc($prefix);
+
+		$lastmsg = time;
+		if ($server->ischannel($target)) { # If this a real channel
+			$activity{lc($target)}->{lc($nick)} = time; # flag the activity
+
+		}
+
+
+		if (lc($target) eq lc($server->{nick})) { # If this is a direct message
+			$target = $nick; # Pivot the target back to the sender
+			if ($prefix ne "!gb" && $prefix ne "!gummy" && $prefix ne "!gummybot") { # And if this isn't prefixed...
+				($cmd, $args) = split(/\s+/,$text,2); # Assume that it's a naked command (no prefix: "memo test My memo" instead of "!gb memo test My memo")
+				$prefix = "!gb"; # and inject the appropriate prefix.
+			}
+		}
+
+		deliver_memos($server, $target, $nick);
+
+		if ($prefix eq "!gb" || $prefix eq "!gummy" || $prefix eq "!gummybot") {
+			# If we supposed to be processing commands
+			if ($gummyenabled !=0) {
+				# and the user isn't flooded
+				if (nickflood($nick,Irssi::settings_get_time('Gummy_NickFloodLimit')/1000)) {
+					# nor is gummy himself
+					if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
+						logtext("$nick PRIVMSG $data");
+						# sub out the fun stuff
+						$args = dofunsubs($server, $target, $args);
+						# and run the command (if appropriate)
+						if (!parse_command(\%commands,$server, $curwind, $target, $nick, $cmd, $args)) {
+							gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
+						}
+					}
+					else {
+						print("Denied! $target is flooded.");
+					}	
+				}
+				else {
+					print("Denied! $nick is flooded.");
+				}
+			}
+			elsif (lc($cmd) eq "on") {
+				cmd_on($server,$curwind,$target,$nick, $args);
+			}
+	
+		}
+	};
+
+	if ($@) {
+		logtext("ERROR","event_privmsg",$@);
+		print("GUMMY CRITICAL: event_privmsg, $@");
+	}
+}
+
+sub event_nick_join {
 	eval {
 		my ($server, $channame, $nick, $addr) = @_;
 
@@ -1268,12 +1296,12 @@ sub join_pounce {
 		}
 	};
 	if ($@) {
-		logtext("ERROR","join_pounce",$@);
-		print("GUMMY CRITICAL: join_pounce, $@");
+		logtext("ERROR","event_nick_join",$@);
+		print("GUMMY CRITICAL: event_nick_join, $@");
 	}
 }
 
-sub nick_change {
+sub event_nick_change {
 	my ($channel, $nick, $oldnick) = @_;
 	eval {
 		add_alias($oldnick,$nick->{nick});
@@ -1304,35 +1332,24 @@ sub nick_change {
 		}
 	};
 	if ($@) {
-		logtext("ERROR","nick_change",$@);
-		print("GUMMY CRITICAL: nick_change, $@");
+		logtext("ERROR","event_nick_change",$@);
+		print("GUMMY CRITICAL: event_nick_change, $@");
 	}
 }
 
-sub check_release {
-	my ($server, $channel, $nick) = @_;
-	# Drop the user from the activity records so we don't message people who aren't here.
-	delete $activity{lc($channel)}->{$nick};	
-	#delete $activity{lc($channel->{name})}->{lc($nick)};
-	if (lc($nick) eq lc($nomnick)) {
-		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
-		$nomnick=undef;
-	}
-}
-
-sub nick_part {
+sub event_nick_part {
 	my ($server, $channel, $nick) = @_;
 	eval {
 		check_release($server,$channel,$nick)
 	};
 	if ($@) {
-		logtext("ERROR","check_release",$@);
-		print("GUMMY CRITICAL: check_release, $@");
+		logtext("ERROR","event_nick_part",$@);
+		print("GUMMY CRITICAL: event_nick_part, $@");
 	}
 	#delete $activity{lc($channel)}->{$nick};	
 	#check_release($server,$channel, $nick);
 }
-sub nick_quit {
+sub event_nick_quit {
 	my ($server, $nick) = @_;
 	eval {
 		# Remove the person from all of the channels they're listed in.
@@ -1342,18 +1359,18 @@ sub nick_quit {
 		}
 	};
 	if ($@) {
-		logtext("ERROR","nick_quit",$@);
-		print("GUMMY CRITICAL: nick_quit, $@");
+		logtext("ERROR","event_nick_quit",$@);
+		print("GUMMY CRITICAL: event_nick_quit, $@");
 	}
 }
-sub nick_kick {
+sub event_nick_kick {
 	my ($server, $channel, $nick) = @_;
 	eval {
 		check_release($server,$channel, $nick);
 	};
 	if ($@) {
-		logtext("ERROR","nick_kick",$@);
-		print("GUMMY CRITICAL: nick_kick, $@");
+		logtext("ERROR","event_nick_kick",$@);
+		print("GUMMY CRITICAL: event_nick_kick, $@");
 	}
 }
 
@@ -1401,11 +1418,11 @@ sub gummy_command {
 	elsif ($cmd eq "blink") {
 		$lastmsg = 0;
 		$lastblink = 0;
-		blink_tick("");
+		event_minutely_tick("");
 	}
 }
 
-sub action_event {
+sub event_action {
 	my ($server, $msg, $nick, $address, $target) = @_;
 
 	eval {
@@ -1418,20 +1435,20 @@ sub action_event {
 		deliver_memos($server, $target, $nick);
 	};
 	if ($@) {
-		logtext("ERROR","action_event",$@);
-		print("GUMMY CRITICAL: action_event, $@");
+		logtext("ERROR","event_action",$@);
+		print("GUMMY CRITICAL: event_action, $@");
 	}	
 }
 
 
 Irssi::command_bind("gummy", "gummy_command");
-Irssi::signal_add("event privmsg", "myevent");
-Irssi::signal_add("message join","join_pounce");
-Irssi::signal_add("message part","nick_part");
-Irssi::signal_add("message kick","nick_kick");
-Irssi::signal_add("message quit","nick_quit");
-Irssi::signal_add("nicklist changed","nick_change");
-Irssi::signal_add("message irc action", "action_event");
+Irssi::signal_add("event privmsg", "event_privmsg");
+Irssi::signal_add("message join","event_nick_join");
+Irssi::signal_add("message part","event_nick_part");
+Irssi::signal_add("message kick","event_nick_kick");
+Irssi::signal_add("message quit","event_nick_quit");
+Irssi::signal_add("nicklist changed","event_nick_change");
+Irssi::signal_add("message irc action", "event_action");
 
 if (Irssi::settings_get_bool('Gummy_AutoOn')) {
 	enablegummy("quiet");	
