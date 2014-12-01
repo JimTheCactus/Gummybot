@@ -45,104 +45,6 @@ my %aliases; # Holds the list of known aliases for current nicknames.
 # short_help (optional): string containing list of parameters for the command.
 # help (optional): string containing a description of the command's behavior/usage.
 %commands = (
-	'nom' => {
-		cmd=>\&cmd_nom,
-		short_help=>"[<target>]",
-		help=>"Causes Gummy to attach himself to you. If you provide an argument, he latches on to them instead."
-	},
-	'ver' => {
-		cmd=>\&cmd_ver,
-		help=>"Reports Gummy's version."
-	},
-	'say' => {
-		cmd=>\&cmd_say,
-		short_help=>"<text>",
-		help=>"Causes Gummy to say what you ask."
-	},
-	'do' => {
-		cmd=>\&cmd_do,
-		short_help=>"<action>",
-		help=>"Causes Gummy to do what you ask."
-	},
-	'telesay' => {
-		cmd=>\&cmd_telesay,
-		short_help=>"<channel> <text>",
-		help=>"Causes Gummy to say what you ask on the target channel."
-	},
-	'teledo' => {
-		cmd=>\&cmd_teledo,
-		short_help=>"<channel> <action>",
-		help=>"Causes Gummy to do what you ask on the target channel."
-	},
-	'crickets' => {
-		cmd=>\&cmd_crickets,
-		help=>"Causes Gummy to take notice of the crickets."
-	},
-	'coolkids' => {
-		cmd=>\&cmd_coolkids,
-		short_help=>"[<channel> | awwyeah]",
-		help=>"Causes Gummy to hand out sunglasses to <channel> or the current channel and PM you everyone he's see talk in the last 10 minutes. awwyeah causes him to produce that list directly in the channel." 
-	},
-	'getitoff' => {
-		cmd=>\&cmd_getitoff,
-		help=>"Causes Gummy to let got of whoever he's nommed on to."
-	},
-	'dance' => {
-		cmd=>\&cmd_dance,
-		help=>"Causes Gummy to shake his groove thang!"
-	},
-	'isskynet()' => {
-		cmd=>\&cmd_isskynet,
-		help=>"Causes Gummy to verify whether he is or is not Skynet."
-	},
-	'roll' => {
-		cmd=>\&cmd_roll,
-		short_help => "<dice> <sides>",
-		help => "Causes Gummy to roll <dice> dice with <sides> on them."
-	},
-	'om' => {
-		cmd => \&cmd_om,
-		short_help => "[add <text> | nom | skippy]",
-		help =>"Causes Gummy to ponder the universe. Use add to suggest a new contemplation, nom to contemplate the inner wisdom on nom, and skippy to return the wisdom of Specialist Skippy."
-	},
-	'autogreet' => {
-		cmd => \&cmd_autogreet,
-		short_help => "[<greeting>]",
-		help=>"Causes Gummy to set your greeting. If you do not provide a greeting he'll erase your current one."
-	},
-	'memo' => {
-		cmd => \&cmd_memo,
-		short_help => "<target> <text>",
-		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
-	},
-	'whoswho' => {
-		cmd => \&cmd_whoswho,
-		short_help => "[<nick>]",
-		help => "Returns a link to the list of known Tumblrs or the link to a specific one based on the user's nickname."
-	},
-	'yourip' => {
-		cmd => \&cmd_yourip,
-		help => "Causes Gummy to emit his local IP. You don't need this."
-	},
-	'remindme' => {
-		cmd => \&cmd_remindme,
-		short_help => "<delay time> <time units> <message>",
-		help => "Causes Gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online you'll be notfied immediately, otherwise you will receive a gummy memo next time you're active."
-	},
-	'aka' => {
-		cmd => \&cmd_aka,
-		short_help => "<nick>",
-		help => "Causes Gummy to emit up to 5 previous nicknames for the specified nick."
-	},
-	'help' => {
-		cmd=>\&cmd_help,
-		short_help => "[<command>]",
-		help => "Causes Gummy to emit the list of commands he knows, or information about a specific <command>."
-	},
-	'off' => {
-		cmd=>\&cmd_on,
-		help => "Causes Gummy to disable himself. Only usable by channel ops."
-	}
 );
 
 # Establish the settings and their defaults
@@ -562,6 +464,20 @@ sub docoolkids {
 	}
 }
 
+$commands{'ver'} = {
+		cmd=>\&cmd_ver,
+		help=>"Reports Gummy's version."
+	};
+sub cmd_ver {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummysay($server, $target, "Gummybot is currently version $gummyver.");
+}
+
+$commands{'nom'} = {
+		cmd=>\&cmd_nom,
+		short_help=>"[<target>]",
+		help=>"Causes Gummy to attach himself to you. If you provide an argument, he latches on to them instead."
+	};
 sub cmd_nom {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -600,17 +516,24 @@ sub cmd_nom {
 	}
 }
 
-sub cmd_ver {
-	my ($server, $wind, $target, $nick, $args) = @_;
-	gummysay($server, $target, "Gummybot is currently version $gummyver.");
-}
-
+$commands{'say'} = {
+			cmd=>\&cmd_say,
+			short_help=>"<text>",
+			help=>"Causes Gummy to say what you ask."
+		};
 sub cmd_say {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
 		gummysay($server, $target, $args);
 	}
 }
+
+
+$commands{'do'} = {
+			cmd=>\&cmd_do,
+			short_help=>"<action>",
+			help=>"Causes Gummy to do what you ask."
+		};
 sub cmd_do {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
@@ -618,6 +541,11 @@ sub cmd_do {
 	}
 }
 
+$commands{'telesay'} = {
+		cmd=>\&cmd_telesay,
+		short_help=>"<channel> <text>",
+		help=>"Causes Gummy to say what you ask on the target channel."
+	};
 sub cmd_telesay {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
@@ -638,6 +566,11 @@ sub cmd_telesay {
 	}
 }
 
+$commands{'teledo'} = {
+		cmd=>\&cmd_teledo,
+		short_help=>"<channel> <action>",
+		help=>"Causes Gummy to do what you ask on the target channel."
+	};
 sub cmd_teledo {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
@@ -658,11 +591,20 @@ sub cmd_teledo {
 	}
 }
 
+$commands{'crickets'} = {
+		cmd=>\&cmd_crickets,
+		help=>"Causes Gummy to take notice of the crickets."
+	};
 sub cmd_crickets {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummydo($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
 }
 
+$commands{'coolkids'} = {
+		cmd=>\&cmd_coolkids,
+		short_help=>"[<channel> | awwyeah]",
+		help=>"Causes Gummy to hand out sunglasses to <channel> or the current channel and PM you everyone he's see talk in the last 10 minutes. awwyeah causes him to produce that list directly in the channel." 
+	};
 sub cmd_coolkids {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -683,6 +625,10 @@ sub cmd_coolkids {
 	}
 }
 
+$commands{'getitoff'} = {
+		cmd=>\&cmd_getitoff,
+		help=>"Causes Gummy to let got of whoever he's nommed on to."
+	};
 sub cmd_getitoff {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (defined $nomnick) {
@@ -694,17 +640,30 @@ sub cmd_getitoff {
 	}	
 }
 
+$commands{'dance'} = {
+		cmd=>\&cmd_dance,
+		help=>"Causes Gummy to shake his groove thang!"
+	};
 sub cmd_dance {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummydo($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
 }
 
+$commands{'isskynet()'} = {
+		cmd=>\&cmd_isskynet,
+		help=>"Causes Gummy to verify whether he is or is not Skynet."
+	};
 sub cmd_isskynet {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummysay($server, $target, "89");
 	gummysay($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
 }
 
+$commands{'roll'} = {
+		cmd=>\&cmd_roll,
+		short_help => "<dice> <sides>",
+		help => "Causes Gummy to roll <dice> dice with <sides> on them."
+	};
 sub cmd_roll {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -737,6 +696,11 @@ sub cmd_roll {
 	gummydo($server, $target, $result);
 }
 
+$commands{'om'} = {
+		cmd => \&cmd_om,
+		short_help => "[add <text> | nom | skippy]",
+		help =>"Causes Gummy to ponder the universe. Use add to suggest a new contemplation, nom to contemplate the inner wisdom on nom, and skippy to return the wisdom of Specialist Skippy."
+	};
 sub cmd_om {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -775,6 +739,11 @@ sub cmd_om {
 	}
 }
 
+$commands{'autogreet'} = {
+		cmd => \&cmd_autogreet,
+		short_help => "[<greeting>]",
+		help=>"Causes Gummy to set your greeting. If you do not provide a greeting he'll erase your current one."
+	};
 sub cmd_autogreet {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
@@ -795,6 +764,11 @@ sub cmd_autogreet {
 	}
 }
 
+$commands{'memo'} = {
+		cmd => \&cmd_memo,
+		short_help => "<target> <text>",
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
+	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (!Irssi::settings_get_bool('Gummy_AllowMemo')) {
@@ -828,6 +802,11 @@ sub add_memo {
 	write_datastore();
 }
 
+$commands{'whoswho'} = {
+		cmd => \&cmd_whoswho,
+		short_help => "[<nick>]",
+		help => "Returns a link to the list of known Tumblrs or the link to a specific one based on the user's nickname."
+	};
 sub cmd_whoswho {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if ($args) {
@@ -838,12 +817,21 @@ sub cmd_whoswho {
 	}
 }	
 
+$commands{'yourip'} = {
+		cmd => \&cmd_yourip,
+		help => "Causes Gummy to emit his local IP. You don't need this."
+	};
 sub cmd_yourip {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	chomp (my $ip = get('http://icanhazip.com'));
 	gummydo($server, $target, "spits out a ticker tape reading: $ip");
 }
 
+$commands{'remindme'} = {
+		cmd => \&cmd_remindme,
+		short_help => "<delay time> <time units> <message>",
+		help => "Causes Gummy to remind you about something after a specified amount of time. Time units can be m for minutes, h for hours, or d for days. If you're online you'll be notfied immediately, otherwise you will receive a gummy memo next time you're active."
+	};
 sub cmd_remindme {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args,3);
@@ -902,6 +890,11 @@ sub cmd_remindme {
 	gummydo($server, $target, "saves it in his databank for later.");
 }
 
+$commands{'aka'} = {
+		cmd => \&cmd_aka,
+		short_help => "<nick>",
+		help => "Causes Gummy to emit up to 5 previous nicknames for the specified nick."
+	};
 sub cmd_aka {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -925,6 +918,11 @@ sub cmd_aka {
 	}
 }
 
+$commands{'help'} = {
+		cmd=>\&cmd_help,
+		short_help => "[<command>]",
+		help => "Causes Gummy to emit the list of commands he knows, or information about a specific <command>."
+	};
 sub cmd_help {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
@@ -966,6 +964,10 @@ sub cmd_on {
 	}
 }
 
+$commands{'off'} = {
+		cmd=>\&cmd_on,
+		help => "Causes Gummy to disable himself. Only usable by channel ops."
+	};
 sub cmd_off {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (isgummyop($server,$target,$nick)) {
