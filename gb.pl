@@ -253,6 +253,7 @@ sub write_datastore {
 
 sub read_datastore {
 	my %datastore=();
+	my $count;
 	%greets=();
 	%memos=();
 	@reminders=();
@@ -261,15 +262,23 @@ sub read_datastore {
 		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
 		if (defined($datastore{greets})) {
 			%greets = %{$datastore{greets}};
+			$count = scalar keys %greets;
+			print("Loaded $count greets.");
 		}
 		if (defined($datastore{memos})) {
 			%memos = %{$datastore{memos}};
+			$count = scalar keys %memos;
+			print("Loaded memos for $count nicks.");
 		}
 		if (defined($datastore{reminders})) {
 			@reminders = @{$datastore{reminders}};
+			$count = scalar @reminders;
+			print("Loaded $count reminders.");
 		}
 		if (defined($datastore{aliases})) {
 			%aliases = %{$datastore{aliases}};
+			$count = scalar keys %aliases;
+			print("Loaded $count aliases for known users.");
 		}
 	}
 }
@@ -296,12 +305,6 @@ sub loadfunfile {
 sub loadfunstuff {
 	my $count;
 
-	$count = scalar keys %greets;
-	print("Loaded $count greets.");
-	$count = scalar keys %memos;
-	print("Loaded memos for $count nicks.");
-	$count = scalar @reminders;
-	print("Loaded $count reminders.");
 
 	$count = loadfunfile("buddha");
 	print("Loaded $count words of wisdom.");
@@ -312,6 +315,7 @@ sub loadfunstuff {
 	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
 	# Basically it prebuilds the substitution list.
 
+	print("Please wait... Generating funstuff lookups...");
 	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
 	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
 
@@ -330,9 +334,14 @@ sub loadfunstuff {
 	}
 
 	$sublist = Config::Tiny->read(getdir('gummyfun/substitutions'));
-	$count = scalar keys %$sublist;
-	print("Loaded $count substitutions.");
-	print("Please wait... Generating funstuff lookups...");
+	if (!defined $sublist) {
+		my $errtxt = Config::Tiny->errstr();
+		print("Failed to load sublist: $errtxt")
+	}
+	else {
+		$count  = scalar keys %$sublist;
+		print("Loaded $count substitutions.");
+	}
 
 	my %poniesbyclass;
 
@@ -382,6 +391,8 @@ sub loadfunstuff {
 		my @options = keys %ponies;
 		$funsubs{lc($funsub)} = \@options;
 	}
+
+	# Mark that we've updated the funsubs.
 	$lastupdate = time;
 	print("Done!");
 }
