@@ -28,7 +28,12 @@ my @reminders=(); # Hold the list of pending reminders.
 my %commands; # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
 
-# Define the table of commands and their handlers.
+# Define the table of commands and their handlers. The key is the command text,
+# the entry contains a keyed hash of parameters
+# An entry has the following syntax:
+# cmd (required): reference to command code
+# short_help (optional): string containing list of parameters for the command.
+# help (optional): string containing a description of the command's behavior/usage.
 %commands = (
 	'nom' => {
 		cmd=>\&cmd_nom,
@@ -131,27 +136,41 @@ my %aliases; # Holds the list of known aliases for current nicknames.
 );
 
 # Establish the settings and their defaults
-Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0);
-Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1);
-Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1);
-Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1);
-Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0);
-Irssi::settings_add_bool('GummyBot','Gummy_GreetOnEntry',0);
-Irssi::settings_add_bool('GummyBot','Gummy_JoinNom',1);
-Irssi::settings_add_bool('GummyBot','Gummy_Blink',1);
-Irssi::settings_add_str('GummyBot','Gummy_RootDir','');
-Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog');
-Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata');
-Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd');
-Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s');
-Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s');
-Irssi::settings_add_time('GummyBot','Gummy_BlinkFloodLimit','1h');
-Irssi::settings_add_time('GummyBot','Gummy_NomFloodLimit','10m');
-Irssi::settings_add_time('GummyBot','Gummy_MemoFloodLimit','2m');
-Irssi::settings_add_time('GummyBot','Gummy_LogFloodLimit','10m');
-Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m');
-Irssi::settings_add_time('GummyBot','Gummy_GreetFloodLimit','10m');
-Irssi::settings_add_time('GummyBot','Gummy_BlinkTimeout','10m');
+Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
+
+# Greets
+Irssi::settings_add_bool('GummyBot','Gummy_AllowAutogreet',1); # Enables Gummy's greet system
+Irssi::settings_add_bool('GummyBot','Gummy_GreetOnEntry',0); # Makes Gummy greet based on the new nick rather than the old one.
+Irssi::settings_add_time('GummyBot','Gummy_GreetFloodLimit','10m'); # Sets the minimum time between greet events for a given nick (Prevents floods from unstable connections.)
+
+# Memos
+Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1); # Enables Gummy's memo system.
+Irssi::settings_add_time('GummyBot','Gummy_MemoFloodLimit','2m'); # Sets the minimum time between adding memos.
+
+#Noms
+Irssi::settings_add_bool('GummyBot','Gummy_JoinNom',1); # Enables Gummy's nomming feature when people join.
+Irssi::settings_add_time('GummyBot','Gummy_NomFloodLimit','10m'); # Sets the minimum time between join nom events.
+
+#Blinks
+Irssi::settings_add_bool('GummyBot','Gummy_Blink',1); # Enables Gummy's blink in idle periods.
+Irssi::settings_add_time('GummyBot','Gummy_BlinkTimeout','10m'); # Sets the quiet interval before Gummy will blink
+Irssi::settings_add_time('GummyBot','Gummy_BlinkFloodLimit','1h'); # Sets the minimum time between blinks.
+
+#Files
+Irssi::settings_add_str('GummyBot','Gummy_RootDir',''); # Sets the main folder where Gummy will save his files.
+Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog'); # Sets the name of the folder Gummy will use for logging.
+Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata'); # Sets where Gummy will store his datastore.
+Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd'); # Sets where Gummy will store OM suggestions.
+
+# Speed Limit
+Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s'); # Set the time required between requests from a single nick.
+Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s'); # Sets the minimum time between commands from a single channel.
+
+# Other
+Irssi::settings_add_time('GummyBot','Gummy_LogFloodLimit','10m'); # Sets the minimum time between log requests.
+Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m'); # Sets the rate at which OM suggestions can be submitted.
+Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's tele-commands 
+Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
 
 
 $VERSION = '1.00';
