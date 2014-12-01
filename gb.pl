@@ -1407,7 +1407,7 @@ sub action_event {
 		# If an action happens, mark that we heard it.
 		$lastmsg = time;
 		if ($server->ischannel($target)) {
-			$activity{lc($target)}->{$nick} = time;
+			$activity{lc($target)}->{lc($nick)} = time;
 		}
 		# Deliver any memos (if appropriate.)
 		deliver_memos($server, $target, $nick);
