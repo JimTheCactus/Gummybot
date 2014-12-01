@@ -181,12 +181,13 @@ Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m'); # Sets the ra
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's tele-commands 
 Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
 
-
+# getdir(file)
+# Returns the full path to a file after adjusting for the root directory.
 sub getdir {
 	my $rootdir = Irssi::settings_get_str('Gummy_RootDir');
 
 	$rootdir =~ s/^\s+|\s+$//g;
-	if ($rootdir eq '') {
+	if ($rootdir eq '') { # If the root directory field is blank, return it as-is.
 		return @_;
 	}
 	else {
@@ -194,6 +195,8 @@ sub getdir {
 	}
 }
 
+# logtext(message)
+# Write a line of text to Gummy's admin log.
 sub logtext {
 	open LOGFILE, ">> ".getdir(Irssi::settings_get_str('Gummy_LogFile'));
 	print LOGFILE POSIX::strftime("%Y%m%d %H:%M:%S", localtime);
@@ -201,6 +204,7 @@ sub logtext {
 	close LOGFILE;
 }
 
+# trim(text)
 # Trims whitespace. Why a text parser language doesn't have this is beyond me.
 sub trim {
 	my $temp=shift;
@@ -208,6 +212,8 @@ sub trim {
 	return $temp;
 }
 
+# enablegummy(['quiet'])
+# Starts gummy. Suppresses the boot message if the first argument is 'quiet'
 sub enablegummy {
 	$gummyenabled = 1;
 	$lastblink=time;
@@ -223,12 +229,16 @@ sub enablegummy {
 	}
 }
 
+# disablegummy()
+# Stops gummy.
 sub disablegummy {
 	$gummyenabled = 0;
 	Irssi::timeout_remove($blinkhandle) or print "Unable to kill timer handle.";
 	logtext("Gummy Disabled.");
 }
 
+# isgummyop(server, channel, nick)
+# Returns true if nick is an op.
 sub isgummyop {
 	my ($server,$channame,$target)=@_;
 	if (not $server->ischannel($channame)) { return 0 };
@@ -242,6 +252,8 @@ sub isgummyop {
 	}
 }
 
+# write_datastore()
+# Commits the datastore to disk.
 sub write_datastore {
 	my %datastore;
 	$datastore{greets}=\%greets;
@@ -251,6 +263,8 @@ sub write_datastore {
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
 }
 
+# read_datastore()
+# retreives the datastore from the disk.
 sub read_datastore {
 	my %datastore=();
 	my $count;
@@ -283,6 +297,8 @@ sub read_datastore {
 	}
 }
 
+# loadfunfile(file)
+# Parses one funfile for entries and adds it to the funfile database.
 sub loadfunfile {
 	my $count=0;
 	my $type=$_[0];
@@ -302,9 +318,10 @@ sub loadfunfile {
 	return $count;
 }
 
+# loadfunstuff()
+# Loads all of the appropriate funstuff files and builds the lookup tables.
 sub loadfunstuff {
 	my $count;
-
 
 	$count = loadfunfile("buddha");
 	print("Loaded $count words of wisdom.");
@@ -397,11 +414,14 @@ sub loadfunstuff {
 	print("Done!");
 }
 
+# dofunsubs(server, channel, text)
+# Does appropriate funstuff substitutions on the text and returns the adjusted text.
+
 sub dofunsubs {
 	my ($server, $channame, $text) = @_;
 	my $count=0;
 
-	$text =~ s/%wut/%weird%living/g;
+	$text =~ s/%wut/%weird%living/g; # special handling for the compound %wut
 
 	foreach my $funsub (keys %funsubs) {
 		my $searchtext = quotemeta ("%". $funsub);
@@ -445,6 +465,10 @@ sub dofunsubs {
 	return $text;
 }
 
+# gummydo(server, channel, text)
+# Causes gummy to emit the text in an action. This method is preferred over
+# gummysay as it won't trigger bots.
+
 sub gummydo {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
@@ -456,6 +480,9 @@ sub gummydo {
 	logtext("Gummybot ACTION $channame:$data");
 }
 
+# gummysay(server, channel, text)
+# Causes Gummy to emit the text as a say. Text is encapsulated with Nom! ()
+# to avoid bot loops.
 sub gummysay {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
@@ -469,6 +496,12 @@ sub gummyrawsay {
 	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");
 	
 }
+
+# flood (type, target, timeout)
+# Type is the type of flood counter (memo, command, etc)
+# Target is the source we're trying to flood limit (such as a nick or a channel)
+# Timeout is how long (in seconds) it has to have been since the last event to not be flooded.
+# If target hasn't done type action in timeout time, this returns true, otherwise it returns false.
 
 sub flood {
 	my ($type, $target, $timeout) = @_;
@@ -488,6 +521,8 @@ sub flood {
 	}
 }
 
+# floodreset(type,target)
+# Unfloods a particular event source.
 sub floodreset {
 	my ($type, $target) = @_;
 	my $augtarget = $type.":".$target;
@@ -496,10 +531,14 @@ sub floodreset {
 	}
 }
 
+# nickflood(nick,timeout)
+# Convience function for checking if a nick is spamming. Calls flood("nick",nick,timeout)
 sub nickflood {
 	return flood("nick",@_);
 }
 
+# docoolkids(server, channel, channeltorespondto, requestingnick)
+# Determines who is active on the channel and emits the list to the target.
 sub docoolkids {
 	my ($server, $channame, $target, $nick) = @_;
 	my $peeps="";
