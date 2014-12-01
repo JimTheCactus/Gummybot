@@ -804,8 +804,7 @@ sub add_memo {
 
 $commands{'whoswho'} = {
 		cmd => \&cmd_whoswho,
-		short_help => "[<nick>]",
-		help => "Returns a link to the list of known Tumblrs or the link to a specific one based on the user's nickname."
+		help => "Returns a link to the list of known Tumblrs."
 	};
 sub cmd_whoswho {
 	my ($server, $wind, $target, $nick, $args) = @_;
