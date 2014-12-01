@@ -10,13 +10,23 @@ use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
 
-my $gummyver = "2.9.9";
+my $gummyver = "2.9.10";
+
+#Module Header
+$VERSION = '1.00';
+%IRSSI = (
+	authors     =>	'Jim The Cactus',
+	contact     =>	'themanhimself@jimthecactus.com',
+	name        =>	"Gummybot $gummyver",
+	description => 	'The one and only Gummybot' ,
+	license     =>	'Public Domain',
+);
 
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
 my %funstuff; # Holds the various replacement data
-my %funsubs;
-my $blinkhandle; 
+my %funsubs; # Holds the processed hash of replacement data
+my $blinkhandle; # Holds the handle to the maintenance event timer.
 my $lastblink; # Keeps track of the last time we blinked
 my $lastmsg; # Keeps track of the last time we saw traffic
 my %activity; # Keeps track of when we last saw a specific person
@@ -172,15 +182,6 @@ Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's te
 Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
 
 
-$VERSION = '1.00';
-%IRSSI = (
-	authors     =>	'Jim The Cactus',
-	contact     =>	'themanhimself@jimthecactus.com',
-	name        =>	"Gummybot $gummyver",
-	description => 	'The one and only Gummybot' ,
-	license     =>	'Public Domain',
-);
-
 sub getdir {
 	my $rootdir = Irssi::settings_get_str('Gummy_RootDir');
 
@@ -307,6 +308,9 @@ sub loadfunstuff {
 
 	$count = loadfunfile("skippy");
 	print("Loaded $count skippyisms.");
+
+	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
+	# Basically it prebuilds the substitution list.
 
 	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
 	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
