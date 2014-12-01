@@ -964,7 +964,7 @@ sub cmd_on {
 }
 
 $commands{'off'} = {
-		cmd=>\&cmd_on,
+		cmd=>\&cmd_off,
 		help => "Causes Gummy to disable himself. Only usable by channel ops."
 	};
 sub cmd_off {
