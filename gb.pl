@@ -142,8 +142,6 @@ Irssi::settings_add_bool('GummyBot','Gummy_Blink',1);
 Irssi::settings_add_str('GummyBot','Gummy_RootDir','');
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog');
 Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata');
-#Irssi::settings_add_str('GummyBot','Gummy_GreetFile','greets');
-#Irssi::settings_add_str('GummyBot','Gummy_MemoFile','memos');
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd');
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s');
 Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s');
