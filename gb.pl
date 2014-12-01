@@ -5,7 +5,7 @@ use Irssi;
 use Storable;
 use File::Spec;
 use Config::Tiny;
-use List::MoreUtils qw(uniq);
+use List::MoreUtils qw(uniq any);
 use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
@@ -1133,7 +1133,6 @@ sub check_release {
 	my ($server, $channel, $nick) = @_;
 	# Drop the user from the activity records so we don't message people who aren't here.
 	delete $activity{lc($channel)}->{$nick};	
-	#delete $activity{lc($channel->{name})}->{lc($nick)};
 	if (lc($nick) eq lc($nomnick)) {
 		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
 		$nomnick=undef;
@@ -1187,7 +1186,6 @@ sub event_minutely_tick {
 
 		prune_activity(); # Clean up the activity data
 		deliver_reminders(); # Message people with any reminders they've asked for.
-
 		do_blink(); # Do any blink related activities
 	};
 	if ($@) {
@@ -1201,8 +1199,11 @@ sub event_privmsg {
 	eval {
 		my ($target, $text) = split(/ :/, $data, 2);
 		my $curwind = Irssi::active_win;
+		my $mynick = lc($server->{nick});
 		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
 		$prefix = lc($prefix);
+		my @prefixlist = ('!gb','!gummy','!gummybot', $mynick, $mynick . ":"); # Build up the prefix list.
+
 
 		$lastmsg = time;
 		if ($server->ischannel($target)) { # If this a real channel
@@ -1210,10 +1211,9 @@ sub event_privmsg {
 
 		}
 
-
-		if (lc($target) eq lc($server->{nick})) { # If this is a direct message
+		if (lc($target) eq $mynick) { # If this is a direct message
 			$target = $nick; # Pivot the target back to the sender
-			if ($prefix ne "!gb" && $prefix ne "!gummy" && $prefix ne "!gummybot") { # And if this isn't prefixed...
+			if (!any {$_ eq $prefix} @prefixlist) { # And if this isn't prefixed...
 				($cmd, $args) = split(/\s+/,$text,2); # Assume that it's a naked command (no prefix: "memo test My memo" instead of "!gb memo test My memo")
 				$prefix = "!gb"; # and inject the appropriate prefix.
 			}
@@ -1221,7 +1221,7 @@ sub event_privmsg {
 
 		deliver_memos($server, $target, $nick);
 
-		if ($prefix eq "!gb" || $prefix eq "!gummy" || $prefix eq "!gummybot") {
+		if (any {$_ eq $prefix} @prefixlist) {
 			# If we supposed to be processing commands
 			if ($gummyenabled !=0) {
 				# and the user isn't flooded
