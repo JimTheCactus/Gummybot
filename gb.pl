@@ -1404,11 +1404,13 @@ sub action_event {
 	my ($server, $msg, $nick, $address, $target) = @_;
 
 	eval {
-		# If an action happens, mark that we heard it and take no further action.
+		# If an action happens, mark that we heard it.
 		$lastmsg = time;
 		if ($server->ischannel($target)) {
 			$activity{lc($target)}->{$nick} = time;
 		}
+		# Deliver any memos (if appropriate.)
+		deliver_memos($server, $target, $nick);
 	};
 	if ($@) {
 		logtext("ERROR","action_event",$@);
