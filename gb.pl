@@ -167,7 +167,6 @@ Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s'); # Set the tim
 Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s'); # Sets the minimum time between commands from a single channel.
 
 # Other
-Irssi::settings_add_time('GummyBot','Gummy_LogFloodLimit','10m'); # Sets the minimum time between log requests.
 Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m'); # Sets the rate at which OM suggestions can be submitted.
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's tele-commands 
 Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
