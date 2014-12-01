@@ -35,17 +35,8 @@ my $nomnick; # Keeps track of who gummy is attached to
 my %greets; # Holds the greeting messages
 my %memos; # Holds the current pending memos
 my @reminders=(); # Hold the list of pending reminders.
-my %commands; # Holds the table of commands.
+my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
-
-# Define the table of commands and their handlers. The key is the command text,
-# the entry contains a keyed hash of parameters
-# An entry has the following syntax:
-# cmd (required): reference to command code
-# short_help (optional): string containing list of parameters for the command.
-# help (optional): string containing a description of the command's behavior/usage.
-%commands = (
-);
 
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
@@ -439,30 +430,16 @@ sub nickflood {
 	return flood("nick",@_);
 }
 
-# docoolkids(server, channel, channeltorespondto, requestingnick)
-# Determines who is active on the channel and emits the list to the target.
-sub docoolkids {
-	my ($server, $channame, $target, $nick) = @_;
-	my $peeps="";
-	my $count=0;
-	if ($server->ischannel($channame)) {
-		my $channel = $server->channel_find($channame);
-		foreach (keys %{$activity{lc($channame)}}){
-			if ($channel->nick_find($_)) {
-				$peeps .= $_ . ", ";
-				++$count;
-			}
-		}
-	}
-	
-	if ($count > 0 ) {
-		$peeps = substr $peeps, 0,length($peeps)-2;
-		gummydo($server,$target, "offers sunglasses to $peeps.");
-	}
-	else {
-		gummydo($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
-	}
-}
+#
+# Commands
+#
+
+# Commands tefines the table of commands and their handlers. The key is the command text,
+# the entry contains a keyed hash of parameters. An entry has the following syntax:
+# cmd (required): reference to command code
+# short_help (optional): string containing list of parameters for the command.
+# help (optional): string containing a description of the command's behavior/usage.
+
 
 $commands{'ver'} = {
 		cmd=>\&cmd_ver,
@@ -624,6 +601,31 @@ sub cmd_coolkids {
 		}
 	}
 }
+# docoolkids(server, channel, channeltorespondto, requestingnick)
+# Determines who is active on the channel and emits the list to the target.
+sub docoolkids {
+	my ($server, $channame, $target, $nick) = @_;
+	my $peeps="";
+	my $count=0;
+	if ($server->ischannel($channame)) {
+		my $channel = $server->channel_find($channame);
+		foreach (keys %{$activity{lc($channame)}}){
+			if ($channel->nick_find($_)) {
+				$peeps .= $_ . ", ";
+				++$count;
+			}
+		}
+	}
+
+	if ($count > 0 ) {
+		$peeps = substr $peeps, 0,length($peeps)-2;
+		gummydo($server,$target, "offers sunglasses to $peeps.");
+	}
+	else {
+		gummydo($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
+	}
+}
+
 
 $commands{'getitoff'} = {
 		cmd=>\&cmd_getitoff,
@@ -794,6 +796,8 @@ sub cmd_memo {
 	gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
 }
 
+# add_memo(to, from, message)
+# Adds a memo to be delivered later.
 sub add_memo {
 	my ($to, $from, $message) = @_;
 	my $timestr;
