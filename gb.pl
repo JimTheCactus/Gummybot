@@ -930,7 +930,7 @@ sub cmd_aka {
 
 $commands{'seen'} = {
 		cmd=>\&cmd_seen,
-		short_help => "<nick>",
+		short_help => "[<channel>] <nick>",
 		help => "Causes Gummy to emit the last time he heard from <nick>."
 	};
 sub cmd_seen {
@@ -939,6 +939,10 @@ sub cmd_seen {
 	if ($params[0]) {
 		my $who = lc($params[0]);
 		my $where = lc($target);
+		if ($params[1]) {		
+			$who = lc($params[1]);
+			$where = lc($params[0]);
+		}
 		if (defined $activity{$where}->{$who}) {
 			gummydo($server, $target, "last heard from $who in $where on " . POSIX::strftime("%a %b %d %Y at %I:%M %p %Z", localtime($activity{$where}->{$who}))  . ".");
 		}
