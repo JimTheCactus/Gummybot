@@ -165,6 +165,7 @@ sub write_datastore {
 	$datastore{memos}=\%memos;
 	$datastore{reminders}=\@reminders;
 	$datastore{aliases}=\%aliases;
+	$datastore{activity}=\%activity;
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
 }
 
@@ -194,10 +195,10 @@ sub read_datastore {
 			$count = scalar @reminders;
 			print("Loaded $count reminders.");
 		}
-		if (defined($datastore{aliases})) {
-			%aliases = %{$datastore{aliases}};
-			$count = scalar keys %aliases;
-			print("Loaded $count aliases for known users.");
+		if (defined($datastore{activity})) {
+			%activity = %{$datastore{activity}};
+			$count = scalar keys %activity;
+			print("Loaded activity data for $count channels.");
 		}
 	}
 }
@@ -615,21 +616,19 @@ sub cmd_coolkids {
 # Determines who is active on the channel and emits the list to the target.
 sub docoolkids {
 	my ($server, $channame, $target, $nick) = @_;
-	my $peeps="";
-	my $count=0;
+	$channame = lc($channame);
+	my @peeps=();
 	if ($server->ischannel($channame)) {
 		my $channel = $server->channel_find($channame);
-		foreach (keys %{$activity{lc($channame)}}){
-			if ($channel->nick_find($_)) {
-				$peeps .= $_ . ", ";
-				++$count;
+		foreach (keys %{$activity{$channame}}){
+			if (time - $activity{$channame}->{$_} < 600 && $channel->nick_find($_)) {
+				unshift @peeps, $_;
 			}
 		}
 	}
 
-	if ($count > 0 ) {
-		$peeps = substr $peeps, 0,length($peeps)-2;
-		gummydo($server,$target, "offers sunglasses to $peeps.");
+	if ((scalar @peeps) > 0 ) {
+		gummydo($server,$target, "offers sunglasses to " . join(",", @peeps) . ".");
 	}
 	else {
 		gummydo($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
@@ -931,6 +930,29 @@ sub cmd_aka {
 	}
 }
 
+$commands{'seen'} = {
+		cmd=>\&cmd_seen,
+		short_help => "<nick>",
+		help => "Causes Gummy to emit the last time he heard from <nick>."
+	};
+sub cmd_seen {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if ($params[0]) {
+		my $who = lc($params[0]);
+		my $where = lc($target);
+		if (defined $activity{$where}->{$who}) {
+			gummydo($server, $target, "last heard from $who in $where on " . POSIX::strftime("%a %b %d %Y at %I:%M %p %Z", localtime($activity{$where}->{$who}))  . ".");
+		}
+		else {
+			gummydo($server, $target, "shrugs. He hasn't heard from a $who in $where that he can remember.");
+		}
+	}
+	else {
+		gummydo($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
+	}
+}
+
 $commands{'help'} = {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
@@ -1039,7 +1061,7 @@ sub prune_activity {
 		my $key;
 		my $value;
 		while (($key, $value) = each(%{$activity{$channame}})){
-			if (time - $value > 600) { #10 minutes. This needs to be a config
+			if (time - $value > 6*30.5*24*60*60) { # 6 months (This should probably be configurable)
 				@prunelist = (@prunelist, $key);
 			}
 		}
@@ -1190,6 +1212,16 @@ sub do_blink() {
 	}
 }
 
+# mark_activty(server, channel, nick)
+# Adds or updates flags indicating activity. To be called when someone speaks in a channel.
+sub mark_activity {
+	my ($server, $channel, $nick) = @_;
+	# If an action happens, mark that we heard it.
+	if ($server->ischannel($channel)) {
+		$lastmsg = time;
+		$activity{lc($channel)}->{lc($nick)} = time;
+	}
+}
 
 #
 # Events
@@ -1229,18 +1261,15 @@ sub event_privmsg {
 		my @prefixlist = ('!gb','!gummy','!gummybot', $mynick, $mynick . ":"); # Build up the prefix list.
 
 
-		$lastmsg = time;
-		if ($server->ischannel($target)) { # If this a real channel
-			$activity{lc($target)}->{lc($nick)} = time; # flag the activity
-
-		}
-
 		if (lc($target) eq $mynick) { # If this is a direct message
 			$target = $nick; # Pivot the target back to the sender
 			if (!any {$_ eq $prefix} @prefixlist) { # And if this isn't prefixed...
 				($cmd, $args) = split(/\s+/,$text,2); # Assume that it's a naked command (no prefix: "memo test My memo" instead of "!gb memo test My memo")
 				$prefix = "!gb"; # and inject the appropriate prefix.
 			}
+		}
+		else { # if it's a channel...
+			mark_activity($server, $target, $nick);
 		}
 
 		deliver_memos($server, $target, $nick);
@@ -1287,11 +1316,7 @@ sub event_action {
 	my ($server, $msg, $nick, $address, $target) = @_;
 
 	eval {
-		# If an action happens, mark that we heard it.
-		$lastmsg = time;
-		if ($server->ischannel($target)) {
-			$activity{lc($target)}->{lc($nick)} = time;
-		}
+		mark_activity($server, $target, $nick);
 		# Deliver any memos (if appropriate.)
 		deliver_memos($server, $target, $nick);
 	};
