@@ -343,11 +343,12 @@ sub dofunsubs {
 		my $channel = $server->channel_find($channame);
 		my @nicks;
 		# Go through the list of known active nicks
-		foreach (keys %{$activity{lc($channame)}}){
+		foreach my $nick ($channel->nicks()) {
+			my $nickname = $nick->{nick};
 			# if they're still logged in...
-			if (time - $activity{$channame}->{$_} < 600 && $channel->nick_find($_)) {
+			if (defined $nickname && time - $activity{$channame}->{lc($nickname)} < 600) {
 				# Add them to the list
-				push @nicks,$_;
+				push @nicks,$nickname;
 			}
 		}
 
