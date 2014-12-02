@@ -1057,6 +1057,7 @@ sub deliver_memos {
 # prune_activity()
 # Searches the activity hash and discards any that have aged.
 sub prune_activity {
+	my @chanprunelist;
 	# Prune the activity list.
 	foreach my $channame (keys %activity) {
 		my @prunelist=[];
@@ -1068,8 +1069,17 @@ sub prune_activity {
 			}
 		}
 		foreach (@prunelist) {
-			delete( $activity{$channame}->{$_});
+			delete($activity{$channame}->{$_});
 		}
+		# if the channel is empty after pruning
+		if (scalar keys %{$activity{$channame}} < 1) {
+			# mark the channel itself to be pruned.
+			@chanprunelist = (@chanprunelist, $channame);
+		}
+	}
+	# Prune any empty channels.
+	foreach (@chanprunelist) {
+		delete($activity{$_});
 	}
 }
 
