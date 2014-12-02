@@ -997,10 +997,10 @@ sub cmd_off {
 # parse command(command list, server, window handle, target, calling nick, command, command arguments)
 # Finds the command in the list and executes it. (Command dispatcher)
 sub parse_command {
-	my ($commandlist, $server, $wind, $target, $nick, $cmd, $args) = @_;
+	my ($server, $wind, $target, $nick, $cmd, $args) = @_;
 	$cmd = lc($cmd);
-	if (defined $commandlist->{$cmd}) {
-		eval {$commandlist->{$cmd}->{cmd}->($server, $wind, $target, $nick, $args)};
+	if (defined $commands{$cmd}) {
+		eval {$commands{$cmd}->{cmd}->($server, $wind, $target, $nick, $args)};
 		if ($@) {
 			gummydo($server,$target,"shutters and clangs. Error appears in his eyes briefly.");
 			print ("GUMMY CRITICAL $@");
@@ -1256,7 +1256,7 @@ sub event_privmsg {
 						# sub out the fun stuff
 						$args = dofunsubs($server, $target, $args);
 						# and run the command (if appropriate)
-						if (!parse_command(\%commands,$server, $curwind, $target, $nick, $cmd, $args)) {
+						if (!parse_command($server, $curwind, $target, $nick, $cmd, $args)) {
 							gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
 						}
 					}
