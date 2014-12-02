@@ -345,12 +345,9 @@ sub dofunsubs {
 		# Go through the list of known active nicks
 		foreach (keys %{$activity{lc($channame)}}){
 			# if they're still logged in...
-			if ($channel->nick_find($_)) {
+			if (time - $activity{$channame}->{$_} < 600 && $channel->nick_find($_)) {
 				# Add them to the list
 				push @nicks,$_;
-			}
-			else {
-				print "ignoring invalid $_ peep"
 			}
 		}
 
@@ -628,7 +625,7 @@ sub docoolkids {
 	}
 
 	if ((scalar @peeps) > 0 ) {
-		gummydo($server,$target, "offers sunglasses to " . join(",", @peeps) . ".");
+		gummydo($server,$target, "offers sunglasses to " . join(", ", @peeps) . ".");
 	}
 	else {
 		gummydo($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
@@ -1172,8 +1169,6 @@ sub do_greet {
 # Scrubs the activity record for a user leaving a channel and un-noms gummy if appropriate.
 sub check_release {
 	my ($server, $channel, $nick) = @_;
-	# Drop the user from the activity records so we don't message people who aren't here.
-	delete $activity{lc($channel)}->{$nick};	
 	if (lc($nick) eq lc($nomnick)) {
 		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
 		$nomnick=undef;
@@ -1394,9 +1389,6 @@ sub event_nick_change {
 		if (lc($oldnick) eq lc($nomnick)) {
 			$nomnick=$nick->{nick};
 		}
-		# Update their activity record to match the new nick
-		delete $activity{lc($channel->{name})}->{lc($oldnick)};
-		$activity{lc($channel->{name})}->{lc($nick->{nick})}=time;
 
 		foreach my $reminder (@reminders) {
 			if (lc($reminder->{tracked_nick}) eq lc($oldnick) || lc($reminder->{nick}) eq lc($oldnick)) {
@@ -1421,8 +1413,6 @@ sub event_nick_part {
 		logtext("ERROR","event_nick_part",$@);
 		print("GUMMY CRITICAL: event_nick_part, $@");
 	}
-	#delete $activity{lc($channel)}->{$nick};	
-	#check_release($server,$channel, $nick);
 }
 
 # Called when a user quits
@@ -1432,7 +1422,6 @@ sub event_nick_quit {
 	eval {
 		# Remove the person from all of the channels they're listed in.
 		foreach my $channel (keys %activity){
-			delete $activity{$channel}->{$nick};	
 			check_release($server,$channel,$nick);
 		}
 	};
