@@ -1236,9 +1236,9 @@ sub event_minutely_tick {
 		if ( $timesinceupdate > 3600 ) { # If at least an hour has passed since we pulled the funstuff database.
 			write_datastore(); # Backup the datastore to the disk.
 			loadfunstuff(); # Load the funstuff database to pull up any changes.
+			prune_activity(); # Clean up the activity data
 		}
 
-		prune_activity(); # Clean up the activity data
 		deliver_reminders(); # Message people with any reminders they've asked for.
 		do_blink(); # Do any blink related activities
 	};
