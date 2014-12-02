@@ -1258,7 +1258,7 @@ sub event_privmsg {
 		my $mynick = lc($server->{nick});
 		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
 		$prefix = lc($prefix);
-		my @prefixlist = ('!gb','!gummy','!gummybot', $mynick, $mynick . ":"); # Build up the prefix list.
+		my @prefixlist = ('!gb','!gummy','!gummybot', $mynick, $mynick . ":", $mynick . ","); # Build up the prefix list.
 
 
 		if (lc($target) eq $mynick) { # If this is a direct message
