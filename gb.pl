@@ -943,7 +943,7 @@ sub cmd_seen {
 			$who = lc($params[1]);
 			$where = lc($params[0]);
 		}
-		if (defined $activity{$where}->{$who}) {
+		if (defined $activity{$where} && defined $activity{$where}->{$who}) {
 			gummydo($server, $target, "last heard from $who in $where on " . POSIX::strftime("%a %b %d %Y at %I:%M %p %Z", localtime($activity{$where}->{$who}))  . ".");
 		}
 		else {
