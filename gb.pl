@@ -12,7 +12,10 @@ use Switch;
 
 my $gummyver = "2.9.10";
 
+#
 #Module Header
+#
+
 $VERSION = '1.00';
 %IRSSI = (
 	authors     =>	'Jim The Cactus',
@@ -21,6 +24,10 @@ $VERSION = '1.00';
 	description => 	'The one and only Gummybot' ,
 	license     =>	'Public Domain',
 );
+
+#
+# Global state variables (because I'm a bad person
+#
 
 my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
@@ -987,9 +994,10 @@ sub cmd_off {
 # Event Support Functions
 #
 
-
+# parse command(command list, server, window handle, target, calling nick, command, command arguments)
+# Finds the command in the list and executes it. (Command dispatcher)
 sub parse_command {
-	my ($commandlist,$server, $wind, $target, $nick, $cmd, $args) = @_;
+	my ($commandlist, $server, $wind, $target, $nick, $cmd, $args) = @_;
 	$cmd = lc($cmd);
 	if (defined $commandlist->{$cmd}) {
 		eval {$commandlist->{$cmd}->{cmd}->($server, $wind, $target, $nick, $args)};
@@ -1007,6 +1015,8 @@ sub parse_command {
 	}
 }
 
+# deliver_memos(server, target channel, nick)
+# delivers any stored memos for nick to the target channel
 sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
@@ -1020,6 +1030,8 @@ sub deliver_memos {
 	}
 }
 
+# prune_activity()
+# Searches the activity hash and discards any that have aged.
 sub prune_activity {
 	# Prune the activity list.
 	foreach my $channame (keys %activity) {
@@ -1027,7 +1039,7 @@ sub prune_activity {
 		my $key;
 		my $value;
 		while (($key, $value) = each(%{$activity{$channame}})){
-			if (time - $value > 600) {
+			if (time - $value > 600) { #10 minutes. This needs to be a config
 				@prunelist = (@prunelist, $key);
 			}
 		}
@@ -1037,6 +1049,8 @@ sub prune_activity {
 	}
 }
 
+# deliver_reminders()
+# Determines if any reminders have aged, and if so, delivers them to the channel they originated on or via memo.
 sub deliver_reminders {
 	my $changed = 0;
 	while (scalar(@reminders) > 0  && $reminders[0]->{delivery_time} <=  time) {
@@ -1079,7 +1093,8 @@ sub deliver_reminders {
 	}
 }
 
-# Takes two arguments, oldnick and newnick. Pass undef to oldnick for a join.
+# add_alias(old nick, new nick)
+# Updates the alias table to track a change from old nick to new nick. Pass an undef to old nick if the user is joining.
 sub add_alias {
 	my ($oldnick, $newnick) = @_;
 	my $lcold = lc($oldnick);
@@ -1117,6 +1132,8 @@ sub add_alias {
 	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
 }
 
+# do_greet(server, target channel, nick, displayed nick)
+# Issues an autogreet (if appropriate) for nick. Shows the value of the displayed nick (useful for the two nick change modes)
 sub do_greet {
 	my ($server, $target, $nick, $dispnick) = @_;
 	if (flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
@@ -1129,6 +1146,8 @@ sub do_greet {
 	}
 }
 
+# check_release(server, channel, nick)
+# Scrubs the activity record for a user leaving a channel and un-noms gummy if appropriate.
 sub check_release {
 	my ($server, $channel, $nick) = @_;
 	# Drop the user from the activity records so we don't message people who aren't here.
@@ -1139,6 +1158,8 @@ sub check_release {
 	}
 }
 
+# do_blink()
+# Causes gummy to blink, thrash, drop, etc. if appropriate during lulls in activity.
 sub do_blink() {
 	my $timesincemsg=time-$lastmsg;
 	my $timesinceblink=time-$lastblink;
@@ -1174,6 +1195,7 @@ sub do_blink() {
 # Events
 #
 
+# Timer is called once a minute while gummy is active.
 sub event_minutely_tick {
 	# This event triggers once a minute and is used to manage administrative tasks and blinks (if enabled.)
 	eval {
@@ -1194,6 +1216,8 @@ sub event_minutely_tick {
 	}
 }
 
+# Called when a private message is received
+# Implements "event privmsg"
 sub event_privmsg {
 	my ($server, $data, $nick, $address) = @_;
 	eval {
@@ -1257,6 +1281,28 @@ sub event_privmsg {
 	}
 }
 
+# Called when a user does an ACTION
+# Implements "message irc action"
+sub event_action {
+	my ($server, $msg, $nick, $address, $target) = @_;
+
+	eval {
+		# If an action happens, mark that we heard it.
+		$lastmsg = time;
+		if ($server->ischannel($target)) {
+			$activity{lc($target)}->{lc($nick)} = time;
+		}
+		# Deliver any memos (if appropriate.)
+		deliver_memos($server, $target, $nick);
+	};
+	if ($@) {
+		logtext("ERROR","event_action",$@);
+		print("GUMMY CRITICAL: event_action, $@");
+	}	
+}
+
+# Called when a user joins
+# Implements "message join"
 sub event_nick_join {
 	eval {
 		my ($server, $channame, $nick, $addr) = @_;
@@ -1301,6 +1347,8 @@ sub event_nick_join {
 	}
 }
 
+# Called when a user changes nicks
+# Implements "nicklist changed"
 sub event_nick_change {
 	my ($channel, $nick, $oldnick) = @_;
 	eval {
@@ -1337,6 +1385,8 @@ sub event_nick_change {
 	}
 }
 
+# Called when a user leaves
+# Implements "message part"
 sub event_nick_part {
 	my ($server, $channel, $nick) = @_;
 	eval {
@@ -1349,6 +1399,9 @@ sub event_nick_part {
 	#delete $activity{lc($channel)}->{$nick};	
 	#check_release($server,$channel, $nick);
 }
+
+# Called when a user quits
+# Implements "message quit"
 sub event_nick_quit {
 	my ($server, $nick) = @_;
 	eval {
@@ -1363,6 +1416,9 @@ sub event_nick_quit {
 		print("GUMMY CRITICAL: event_nick_quit, $@");
 	}
 }
+
+# Called when a user is kicked from the channel
+# Implements "message kick"
 sub event_nick_kick {
 	my ($server, $channel, $nick) = @_;
 	eval {
@@ -1374,6 +1430,8 @@ sub event_nick_kick {
 	}
 }
 
+# Main command for controlling gummy from the window
+# Implements the /gummy command.
 sub gummy_command {
 	my ($data,$server,$wind) = @_;
 	my ($cmd, $args) = split(/\s/,$data,2);
@@ -1422,26 +1480,10 @@ sub gummy_command {
 	}
 }
 
-sub event_action {
-	my ($server, $msg, $nick, $address, $target) = @_;
-
-	eval {
-		# If an action happens, mark that we heard it.
-		$lastmsg = time;
-		if ($server->ischannel($target)) {
-			$activity{lc($target)}->{lc($nick)} = time;
-		}
-		# Deliver any memos (if appropriate.)
-		deliver_memos($server, $target, $nick);
-	};
-	if ($@) {
-		logtext("ERROR","event_action",$@);
-		print("GUMMY CRITICAL: event_action, $@");
-	}	
-}
-
-
+# Bind our command
 Irssi::command_bind("gummy", "gummy_command");
+
+# Bind our events
 Irssi::signal_add("event privmsg", "event_privmsg");
 Irssi::signal_add("message join","event_nick_join");
 Irssi::signal_add("message part","event_nick_part");
@@ -1449,6 +1491,8 @@ Irssi::signal_add("message kick","event_nick_kick");
 Irssi::signal_add("message quit","event_nick_quit");
 Irssi::signal_add("nicklist changed","event_nick_change");
 Irssi::signal_add("message irc action", "event_action");
+
+# Lastly, if we've been told to start on, boot Gummy quietly.
 
 if (Irssi::settings_get_bool('Gummy_AutoOn')) {
 	enablegummy("quiet");	
