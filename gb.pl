@@ -232,6 +232,10 @@ sub loadfunfile {
 
 sub loadmanualaliases {
 	my $count=0;
+	unless(-e getdir("gummyfun/aliases")) {
+		print "Manual aliases file not found. Ignoring...";
+		return 0;
+	}
 	# Load manual aliases
 	open ALIASFILE, getdir("gummyfun/aliases");
 	while (<ALIASFILE>) {
@@ -246,24 +250,10 @@ sub loadmanualaliases {
 	return $count;
 }
 
-# loadfunstuff()
-# Loads all of the appropriate funstuff files and builds the lookup tables.
-sub loadfunstuff {
-	my $count;
-
-	$count = loadfunfile("buddha");
-	print("Loaded $count words of wisdom.");
-
-	$count = loadfunfile("skippy");
-	print("Loaded $count skippyisms.");
-
-	$count = loadmanualaliases();
-	print("Loaded $count known alias mappings.");
-
+sub loadsubstitutions {
 	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
 	# Basically it prebuilds the substitution list.
 
-	print("Please wait... Generating funstuff lookups...");
 	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
 	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
 
@@ -274,21 +264,19 @@ sub loadfunstuff {
 	$ponylist = Config::Tiny->read(getdir('gummyfun/ponies'));
 	if (!defined $ponylist) {
 		my $errtxt = Config::Tiny->errstr();
-		print("Failed to load ponylist: $errtxt")
+		print("Failed to load ponylist: $errtxt");
+		return 0;
 	}
 	else {
-		$count  = scalar keys %$ponylist;
+		my $count  = scalar keys %$ponylist;
 		print("Loaded $count ponies.");
 	}
 
 	$sublist = Config::Tiny->read(getdir('gummyfun/substitutions'));
 	if (!defined $sublist) {
 		my $errtxt = Config::Tiny->errstr();
-		print("Failed to load sublist: $errtxt")
-	}
-	else {
-		$count  = scalar keys %$sublist;
-		print("Loaded $count substitutions.");
+		print("Failed to load sublist: $errtxt");
+		return 0;
 	}
 
 	my %poniesbyclass;
@@ -339,6 +327,25 @@ sub loadfunstuff {
 		my @options = keys %ponies;
 		$funsubs{lc($funsub)} = \@options;
 	}
+	return scalar keys %$sublist;
+}
+
+# loadfunstuff()
+# Loads all of the appropriate funstuff files and builds the lookup tables.
+sub loadfunstuff {
+	my $count;
+
+	$count = loadmanualaliases();
+	print("Loaded $count known alias mappings.");
+
+	$count = loadfunfile("buddha");
+	print("Loaded $count words of wisdom.");
+
+	$count = loadfunfile("skippy");
+	print("Loaded $count skippyisms.");
+
+	$count = loadsubstitutions();
+	print("Loaded and optomized $count substitutions.");
 
 	# Mark that we've updated the funsubs.
 	$lastupdate = time;
