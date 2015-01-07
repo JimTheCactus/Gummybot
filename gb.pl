@@ -352,7 +352,7 @@ sub loadfunstuff {
 	print("Loaded $count skippyisms.");
 
 	$count = loadsubstitutions();
-	print("Loaded and optomized $count substitutions.");
+	print("Loaded and optimized $count substitutions.");
 
 	# Mark that we've updated the funsubs.
 	$lastupdate = time;
@@ -947,14 +947,23 @@ $commands{'aka'} = {
 sub cmd_aka {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
+
 	if ($params[0]) {
 		my $who = $params[0];
+		my $lcwho = lc($who);
 		my @whoelse = ();
-		if (exists $aliases{lc($who)}) {
-			@whoelse = (@whoelse,@{$aliases{lc($who)}});
+		if (exists $aliases{$lcwho}) {
+			@whoelse = (@whoelse,@{$aliases{$lcwho}});
+			my @evenmore=();
+			foreach (@whoelse) {
+				if (exists $manual_aliases{lc($_)}) {
+					@evenmore = (@evenmore, @{$manual_aliases{lc($_)}});
+				}
+			}
+			@whoelse = (@evenmore,@whoelse)
 		}
-		if (exists $manual_aliases{lc($who)}) {
-			@whoelse = (@whoelse,@{$manual_aliases{lc($who)}});
+		if (exists $manual_aliases{$lcwho}) {
+			@whoelse = (@{$manual_aliases{$lcwho},@whoelse});
 		}
 		@whoelse = uniq @whoelse;
 
