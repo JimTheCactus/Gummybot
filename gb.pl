@@ -10,7 +10,7 @@ use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
 
-my $gummyver = "2.9.10";
+my $gummyver = "2.9.11";
 
 #
 #Module Header
@@ -44,6 +44,7 @@ my %memos; # Holds the current pending memos
 my @reminders=(); # Hold the list of pending reminders.
 my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
+my %manual_aliases; # Hash of list references; holds known aliases.
 
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
@@ -224,6 +225,22 @@ sub loadfunfile {
 	return $count;
 }
 
+sub loadmanualaliases {
+	my $count=0;
+	# Load manual aliases
+	open ALIASFILE, getdir("gummyfun/aliases");
+	while (<ALIASFILE>) {
+		chomp;
+		my @aliases = split(/\s+/);
+		foreach (@aliases) {
+			$manual_aliases{lc($_)} = \@aliases;
+			$count++;
+		}
+	}
+	close ALIASFILE;
+	return $count;
+}
+
 # loadfunstuff()
 # Loads all of the appropriate funstuff files and builds the lookup tables.
 sub loadfunstuff {
@@ -234,6 +251,9 @@ sub loadfunstuff {
 
 	$count = loadfunfile("skippy");
 	print("Loaded $count skippyisms.");
+
+	$count = loadmanualaliases();
+	print("Loaded $count known alias mappings.");
 
 	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
 	# Basically it prebuilds the substitution list.
@@ -910,17 +930,20 @@ sub cmd_aka {
 	my @params = split(/\s+/, $args);
 	if ($params[0]) {
 		my $who = $params[0];
+		my @whoelse = ();
 		if (exists $aliases{lc($who)}) {
-			my $whoelse = $aliases{lc($who)};
-			if (scalar(@$whoelse)) {		
-				gummydo($server, $target, "$who has also been known as @$whoelse.");
-			}
-			else {
-				gummydo($server, $target, "$who has no known aliases.");
-			}
+			@whoelse = (@whoelse,@{$aliases{lc($who)}});
+		}
+		if (exists $manual_aliases{lc($who)}) {
+			@whoelse = (@whoelse,@{$manual_aliases{lc($who)}});
+		}
+		@whoelse = uniq @whoelse;
+
+		if (scalar(@whoelse)) {		
+			gummydo($server, $target, "$who has also been known as " . join(", ",@whoelse) . ".");
 		}
 		else {
-			gummydo($server, $target, "looks around to everypony else, he doesn't know any aliases for $who.");
+			gummydo($server, $target, "$who has no known aliases.");
 		}
 	}
 	else {
