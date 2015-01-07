@@ -963,7 +963,7 @@ sub cmd_aka {
 			@whoelse = (@evenmore,@whoelse)
 		}
 		if (exists $manual_aliases{$lcwho}) {
-			@whoelse = (@{$manual_aliases{$lcwho},@whoelse});
+			@whoelse = (@{$manual_aliases{$lcwho}},@whoelse);
 		}
 		@whoelse = uniq @whoelse;
 
