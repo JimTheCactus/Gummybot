@@ -215,7 +215,13 @@ sub loadfunfile {
 	my $count=0;
 	my $type=$_[0];
 	my @lines;
-	open FUNFILE, getdir("gummyfun/$_[0]");
+	my $filename = getdir("gummyfun/$type");
+	unless(-e $filename) {
+		print "Funfile $type not found";
+		return 0;
+	}
+
+	open FUNFILE, $filename;
 	while (<FUNFILE>) {
 		my $line = $_;
 		chomp($line);
@@ -232,12 +238,13 @@ sub loadfunfile {
 
 sub loadmanualaliases {
 	my $count=0;
-	unless(-e getdir("gummyfun/aliases")) {
+	my $filename = getdir("aliases");
+	unless(-e $filename) {
 		print "Manual aliases file not found. Ignoring...";
 		return 0;
 	}
 	# Load manual aliases
-	open ALIASFILE, getdir("gummyfun/aliases");
+	open ALIASFILE, $filename;
 	while (<ALIASFILE>) {
 		chomp;
 		my @nicks = split(/\s+/);
