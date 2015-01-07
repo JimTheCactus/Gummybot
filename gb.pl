@@ -201,6 +201,11 @@ sub read_datastore {
 			$count = scalar keys %activity;
 			print("Loaded activity data for $count channels.");
 		}
+		if (defined($datastore{aliases})) {
+			%aliases = %{$datastore{aliases}};
+			$count = scalar keys %aliases;
+			print("Loaded inferred aliases for $count nicks.");
+		}
 	}
 }
 
@@ -231,9 +236,9 @@ sub loadmanualaliases {
 	open ALIASFILE, getdir("gummyfun/aliases");
 	while (<ALIASFILE>) {
 		chomp;
-		my @aliases = split(/\s+/);
-		foreach (@aliases) {
-			$manual_aliases{lc($_)} = \@aliases;
+		my @nicks = split(/\s+/);
+		foreach (@nicks) {
+			$manual_aliases{lc($_)} = \@nicks;
 			$count++;
 		}
 	}
