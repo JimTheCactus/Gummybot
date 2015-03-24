@@ -11,7 +11,7 @@ use LWP::Simple;
 use Switch;
 use DBI;
 
-my $gummyver = "2.9.11";
+my $gummyver = "b3.0.0";
 
 #
 #Module Header
@@ -234,7 +234,7 @@ sub connect_to_database {
 				SourceNick CHAR(30) NOT NULL,
 				DeliveryMode CHAR(4),
 				CreatedTime DATETIME,
-				Message TINYTEXT,
+				Message TEXT,
 				INDEX (Nick)
 				)
 			") 
@@ -1152,11 +1152,11 @@ sub deliver_memos {
 
 		while (my @memo = $memo_query->fetchrow_array()) {
 			my ($id, $source, $delivery, $created, $message) = @memo;
+
 			my $memo_target = $target;
 			if ($delivery = "PRIV") {
 				$memo_target = $nick;
 			}
-
 
 			if (!$printed_header) {
 				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
