@@ -1154,7 +1154,7 @@ sub deliver_memos {
 			my ($id, $source, $delivery, $created, $message) = @memo;
 
 			my $memo_target = $target;
-			if ($delivery = "PRIV") {
+			if ($delivery eq "PRIV") {
 				$memo_target = $nick;
 			}
 
