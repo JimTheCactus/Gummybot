@@ -9,8 +9,9 @@ use List::MoreUtils qw(uniq any);
 use POSIX qw/strftime/;
 use LWP::Simple;
 use Switch;
+use DBI;
 
-my $gummyver = "2.9.11";
+my $gummyver = "b3.0.0";
 
 #
 #Module Header
@@ -40,11 +41,12 @@ my %activity; # Keeps track of when we last saw a specific person
 my $lastupdate=time; # Keeps track of when we last loaded the fun stuff
 my $nomnick; # Keeps track of who gummy is attached to
 my %greets; # Holds the greeting messages
-my %memos; # Holds the current pending memos
+#my %memos; # Holds the current pending memos
 my @reminders=(); # Hold the list of pending reminders.
 my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
+my $database; # Holds the handle to our database
 
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
@@ -72,6 +74,12 @@ Irssi::settings_add_str('GummyBot','Gummy_RootDir',''); # Sets the main folder w
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog'); # Sets the name of the folder Gummy will use for logging.
 Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata'); # Sets where Gummy will store his datastore.
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd'); # Sets where Gummy will store OM suggestions.
+
+#Database
+Irssi::settings_add_str('GummyBot', 'Gummy_Database','DBI:mysql:hostname=localhost;database=jmtest'); 
+Irssi::settings_add_str('GummyBot', 'Gummy_DatabaseUser','user');
+Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePW','password');
+Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePrefix','Gummy_');
 
 # Speed Limit
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s'); # Set the time required between requests from a single nick.
@@ -163,7 +171,8 @@ sub isgummyop {
 sub write_datastore {
 	my %datastore;
 	$datastore{greets}=\%greets;
-	$datastore{memos}=\%memos;
+	#JMO: Disabled for DB access switch
+	#$datastore{memos}=\%memos;
 	$datastore{reminders}=\@reminders;
 	$datastore{aliases}=\%aliases;
 	$datastore{activity}=\%activity;
@@ -176,7 +185,8 @@ sub read_datastore {
 	my %datastore=();
 	my $count;
 	%greets=();
-	%memos=();
+	#JMO: Disabled for DB access switch
+	#%memos=();
 	@reminders=();
 	%aliases=();
 	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
@@ -186,11 +196,12 @@ sub read_datastore {
 			$count = scalar keys %greets;
 			print("Loaded $count greets.");
 		}
-		if (defined($datastore{memos})) {
-			%memos = %{$datastore{memos}};
-			$count = scalar keys %memos;
-			print("Loaded memos for $count nicks.");
-		}
+		#JMO: Disabled for DB access switch
+		#if (defined($datastore{memos})) {
+		#	%memos = %{$datastore{memos}};
+		#	$count = scalar keys %memos;
+		#	print("Loaded memos for $count nicks.");
+		#}
 		if (defined($datastore{reminders})) {
 			@reminders = @{$datastore{reminders}};
 			$count = scalar @reminders;
@@ -208,6 +219,33 @@ sub read_datastore {
 		}
 	}
 }
+
+sub connect_to_database {
+#bookmark
+	eval {
+	# do the initial connection
+	$database = DBI->connect(Irssi::settings_get_str('Gummy_Database'),Irssi::settings_get_str('Gummy_DatabaseUser'), Irssi::settings_get_str('Gummy_DatabasePW'))
+		or die "Couldn't connect to database\n" . DBI->errstr;
+
+	# build up the various tables we need to do our work
+	$database->do("CREATE TABLE IF NOT EXISTS " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos
+				(ID INT AUTO_INCREMENT PRIMARY KEY,
+				Nick CHAR(30),
+				SourceNick CHAR(30) NOT NULL,
+				DeliveryMode CHAR(4),
+				CreatedTime DATETIME,
+				Message TEXT,
+				INDEX (Nick)
+				)
+			") 
+		or die "Failed to make memo table\n" . DBI->errstr;
+
+	};
+	if ($@) {
+		print $@;
+	}
+}
+
 
 # loadfunfile(file)
 # Parses one funfile for entries and adds it to the funfile database.
@@ -837,19 +875,27 @@ sub cmd_memo {
 		return;
 	}
 
-	add_memo($who, $nick, $args);
+	my $mode = undef;
+	if (lc($nick) eq lc($target)) {
+		$mode = "PRIV";
+	}
+
+	add_memo($who, $nick, $args, $mode);
 
 	gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
 }
 
-# add_memo(to, from, message)
-# Adds a memo to be delivered later.
+# add_memo(to, from, message, [mode])
+# Adds a memo to be delivered later. If mode = PRIV then deliver privately
 sub add_memo {
-	my ($to, $from, $message) = @_;
-	my $timestr;
-	$timestr = strftime('%Y/%m/%d %R %Z',localtime);
-	push(@{$memos{lc($to)}},"[$timestr] $from: $message");
-	write_datastore();
+	my ($to, $from, $message, $mode) = @_;
+	#my $timestr;
+	#$timestr = strftime('%Y-%m-%d %R %Z',localtime);
+	my $insert_query = $database -> prepare_cached("INSERT INTO " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
+		or die DBI->errstr;
+	$insert_query->execute(lc($to), $from, $mode, $message)
+		or die DBI->errstr;
+#bookmark
 }
 
 $commands{'whoswho'} = {
@@ -1095,13 +1141,38 @@ sub parse_command {
 sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-		if (exists $memos{lc($nick)}) {
-			foreach (@{$memos{lc($nick)}}) {
-				gummydo($server,$target,"opens his mouth and prints a message for $nick saying, \"$_\"");
+		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE nick=?")
+			or die $database->errstr;
+		$memo_query->execute(lc($nick))
+			or die $database->errstr;
+
+		my @purgelist;
+
+		my $printed_header = 0;
+
+		while (my @memo = $memo_query->fetchrow_array()) {
+			my ($id, $source, $delivery, $created, $message) = @memo;
+
+			my $memo_target = $target;
+			if ($delivery = "PRIV") {
+				$memo_target = $nick;
 			}
-			delete @memos{lc($nick)};
-			write_datastore();
+
+			if (!$printed_header) {
+				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
+				$printed_header = 1;
+			}
+			gummydo($server, $memo_target, "[$created] $source: $message");			
+			push @purgelist,$id;
 		}
+
+		my $purge_query = $database->prepare_cached("DELETE FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE ID=?")
+			or die $database->errstr;
+		
+		$purge_query->execute_array({ ArrayTupleStatus => \my @tuple_status },\@purgelist)
+			or die $database->errstr;
+
+#bookmark
 	}
 }
 
@@ -1571,6 +1642,9 @@ Irssi::signal_add("message kick","event_nick_kick");
 Irssi::signal_add("message quit","event_nick_quit");
 Irssi::signal_add("nicklist changed","event_nick_change");
 Irssi::signal_add("message irc action", "event_action");
+
+# Open the database connection
+connect_to_database();
 
 # Lastly, if we've been told to start on, boot Gummy quietly.
 
