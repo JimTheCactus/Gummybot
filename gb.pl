@@ -223,12 +223,12 @@ sub read_datastore {
 sub connect_to_database {
 #bookmark
 	eval {
-	# do the initial connection
-	$database = DBI->connect(Irssi::settings_get_str('Gummy_Database'),Irssi::settings_get_str('Gummy_DatabaseUser'), Irssi::settings_get_str('Gummy_DatabasePW'))
-		or die "Couldn't connect to database\n" . DBI->errstr;
+		# do the initial connection
+		$database = DBI->connect(Irssi::settings_get_str('Gummy_Database'),Irssi::settings_get_str('Gummy_DatabaseUser'), Irssi::settings_get_str('Gummy_DatabasePW'))
+			or die "Couldn't connect to database\n" . DBI->errstr;
 
-	# build up the various tables we need to do our work
-	$database->do("CREATE TABLE IF NOT EXISTS " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos
+		# build up the various tables we need to do our work
+		$database->do("CREATE TABLE IF NOT EXISTS " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos
 				(ID INT AUTO_INCREMENT PRIMARY KEY,
 				Nick CHAR(30),
 				SourceNick CHAR(30) NOT NULL,
@@ -238,7 +238,7 @@ sub connect_to_database {
 				INDEX (Nick)
 				)
 			") 
-		or die "Failed to make memo table\n" . DBI->errstr;
+			or die "Failed to make memo table\n" . DBI->errstr;
 
 	};
 	if ($@) {
@@ -1142,9 +1142,9 @@ sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
 		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE nick=?")
-			or die $database->errstr;
+			or die DBI->errstr;
 		$memo_query->execute(lc($nick))
-			or die $database->errstr;
+			or die DBI->errstr;
 
 		my @purgelist;
 
@@ -1167,10 +1167,10 @@ sub deliver_memos {
 		}
 
 		my $purge_query = $database->prepare_cached("DELETE FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE ID=?")
-			or die $database->errstr;
+			or die DBI->errstr;
 		
 		$purge_query->execute_array({ ArrayTupleStatus => \my @tuple_status },\@purgelist)
-			or die $database->errstr;
+			or die DBI->errstr;
 
 #bookmark
 	}
