@@ -853,7 +853,7 @@ sub cmd_autogreet {
 $commands{'memo'} = {
 		cmd => \&cmd_memo,
 		short_help => "<target> <text>",
-		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM."
 	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
