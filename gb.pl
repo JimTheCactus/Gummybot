@@ -165,6 +165,10 @@ sub isgummyop {
 # Commits the datastore to disk.
 sub write_datastore {
 	my %datastore;
+
+	# Open the database connection (if we're not already)
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
 	$datastore{greets}=\%greets;
 	#JMO: Disabled for DB access switch
 	#$datastore{memos}=\%memos;
@@ -179,6 +183,10 @@ sub write_datastore {
 sub read_datastore {
 	my %datastore=();
 	my $count;
+
+	# Open the database connection (if we're not already)
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
 	%greets=();
 	#JMO: Disabled for DB access switch
 	#%memos=();
@@ -217,7 +225,20 @@ sub read_datastore {
 
 sub connect_to_database {
 #bookmark
+	# ignore errors from this section; if we can't test the database
+	# state then making a new connection isn't a bad plan anyway.
+	eval {
+		# If we've got an open connection
+		if (defined $database) {
+			# and it's active
+			if ($database->Active()) {
+				# bail without doing anythin
+				return true;
+			}
+		}
+	}
 
+	# Open a connection to the database.
 	eval {
 		my $dbconfig = Config::Tiny->new();
 		$dbconfig = $dbconfig->read(getdir("dbconfig"));
@@ -244,7 +265,9 @@ sub connect_to_database {
 	};
 	if ($@) {
 		print $@;
+		return false;
 	}
+	return true;
 }
 
 
@@ -892,6 +915,10 @@ sub add_memo {
 	my ($to, $from, $message, $mode) = @_;
 	#my $timestr;
 	#$timestr = strftime('%Y-%m-%d %R %Z',localtime);
+
+	# initialize the connection to the database if we need to.
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+	
 	my $insert_query = $database -> prepare_cached("INSERT INTO " . $database_prefix . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
 		or die DBI->errstr;
 	$insert_query->execute(lc($to), $from, $mode, $message)
@@ -1142,6 +1169,9 @@ sub parse_command {
 sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
+		# Connect to the database if we haven't already.
+		connect_to_database() or die("Couldn't open database. Check connection settings.");
+
 		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
 			or die DBI->errstr;
 		$memo_query->execute(lc($nick))
@@ -1630,6 +1660,19 @@ sub gummy_command {
 		$lastblink = 0;
 		event_minutely_tick("");
 	}
+	elsif ($cmd eq "resetdb") {
+		eval{ 
+			if (defined $database) {
+				if ($database->Active()) {
+					$database->disconnect();
+				}
+			}
+		}
+		connect_to_database();
+	}
+	else {
+		print "GUMMY: Command '$cmd' not recognized.";
+	}
 }
 
 # Bind our command
@@ -1643,9 +1686,6 @@ Irssi::signal_add("message kick","event_nick_kick");
 Irssi::signal_add("message quit","event_nick_quit");
 Irssi::signal_add("nicklist changed","event_nick_change");
 Irssi::signal_add("message irc action", "event_action");
-
-# Open the database connection
-connect_to_database();
 
 # Lastly, if we've been told to start on, boot Gummy quietly.
 
