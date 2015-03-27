@@ -2,3 +2,4 @@
 connectstring=DBI:mysql:hostname=localhost;database=MyDatabase
 username=MyUsername
 password=MyPassword
+prefix=Gummy_

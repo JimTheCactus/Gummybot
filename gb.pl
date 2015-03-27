@@ -220,7 +220,7 @@ sub connect_to_database {
 
 	eval {
 		my $dbconfig = Config::Tiny->new();
-		$dbconfig = $dbconfig->read("dbconfig");
+		$dbconfig = $dbconfig->read(getdir("dbconfig"));
 		
 		$database_prefix = $dbconfig->{database}->{prefix};
 
