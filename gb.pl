@@ -47,6 +47,7 @@ my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
+my $database_prefix; # Holds the table prefix.
 
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
@@ -74,12 +75,6 @@ Irssi::settings_add_str('GummyBot','Gummy_RootDir',''); # Sets the main folder w
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog'); # Sets the name of the folder Gummy will use for logging.
 Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata'); # Sets where Gummy will store his datastore.
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd'); # Sets where Gummy will store OM suggestions.
-
-#Database
-Irssi::settings_add_str('GummyBot', 'Gummy_Database','DBI:mysql:hostname=localhost;database=jmtest'); 
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabaseUser','user');
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePW','password');
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePrefix','Gummy_');
 
 # Speed Limit
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s'); # Set the time required between requests from a single nick.
@@ -222,13 +217,19 @@ sub read_datastore {
 
 sub connect_to_database {
 #bookmark
+
 	eval {
+		my $dbconfig = Config::Tiny->new();
+		$dbconfig = $dbconfig->read("dbconfig");
+		
+		$database_prefix = $dbconfig->{database}->{prefix};
+
 		# do the initial connection
-		$database = DBI->connect(Irssi::settings_get_str('Gummy_Database'),Irssi::settings_get_str('Gummy_DatabaseUser'), Irssi::settings_get_str('Gummy_DatabasePW'))
+		$database = DBI->connect($dbconfig->{database}->{connectstring},$dbconfig->{database}->{username}, $dbconfig->{database}->{password})
 			or die "Couldn't connect to database\n" . DBI->errstr;
 
 		# build up the various tables we need to do our work
-		$database->do("CREATE TABLE IF NOT EXISTS " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos
+		$database->do("CREATE TABLE IF NOT EXISTS ". $database_prefix ."memos
 				(ID INT AUTO_INCREMENT PRIMARY KEY,
 				Nick CHAR(30),
 				SourceNick CHAR(30) NOT NULL,
@@ -891,7 +892,7 @@ sub add_memo {
 	my ($to, $from, $message, $mode) = @_;
 	#my $timestr;
 	#$timestr = strftime('%Y-%m-%d %R %Z',localtime);
-	my $insert_query = $database -> prepare_cached("INSERT INTO " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
+	my $insert_query = $database -> prepare_cached("INSERT INTO " . $database_prefix . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
 		or die DBI->errstr;
 	$insert_query->execute(lc($to), $from, $mode, $message)
 		or die DBI->errstr;
@@ -1141,7 +1142,7 @@ sub parse_command {
 sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE nick=?")
+		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
 			or die DBI->errstr;
 		$memo_query->execute(lc($nick))
 			or die DBI->errstr;
@@ -1166,7 +1167,7 @@ sub deliver_memos {
 			push @purgelist,$id;
 		}
 
-		my $purge_query = $database->prepare_cached("DELETE FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE ID=?")
+		my $purge_query = $database->prepare_cached("DELETE FROM " . $database_prefix . "memos WHERE ID=?")
 			or die DBI->errstr;
 		
 		$purge_query->execute_array({ ArrayTupleStatus => \my @tuple_status },\@purgelist)
