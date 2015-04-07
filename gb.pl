@@ -1081,13 +1081,17 @@ sub cmd_seen {
 }
 
 $commands{'ping'} = {
-		cmd=>\&cmd_help,
+		cmd=>\&cmd_ping,
 		help => "Causes gummy to emit pong if sent in a private message. Useful for checking for memos."
 	};
 sub cmd_ping {
 	my ($server, $wind, $target, $nick, $args) = @_;
+	print "Ping request from $target for $nick";
 	if (lc($target) eq lc($nick)) {
 		gummydo($server, $target, "pongs.");
+	}
+	else {
+		gummydo($server, $target, "reminds you to only send this command in a PM.");
 	}
 }
 
