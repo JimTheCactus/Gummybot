@@ -233,10 +233,10 @@ sub connect_to_database {
 			# and it's active
 			if ($database->Active()) {
 				# bail without doing anythin
-				return true;
+				return -1;
 			}
 		}
-	}
+	};
 
 	# Open a connection to the database.
 	eval {
@@ -265,9 +265,9 @@ sub connect_to_database {
 	};
 	if ($@) {
 		print $@;
-		return false;
+		return 0;
 	}
-	return true;
+	return -1;
 }
 
 
@@ -1672,13 +1672,14 @@ sub gummy_command {
 		event_minutely_tick("");
 	}
 	elsif ($cmd eq "resetdb") {
+		#Ignore any problems with disconnecting. Just let it die.
 		eval{ 
 			if (defined $database) {
 				if ($database->Active()) {
 					$database->disconnect();
 				}
 			}
-		}
+		};
 		connect_to_database();
 	}
 	else {
