@@ -1082,11 +1082,10 @@ sub cmd_seen {
 
 $commands{'ping'} = {
 		cmd=>\&cmd_ping,
-		help => "Causes gummy to emit pong if sent in a private message. Useful for checking for memos."
+		help => "Causes gummy to do emit 'pongs.' if sent in a private message. Useful for checking for memos."
 	};
 sub cmd_ping {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	print "Ping request from $target for $nick";
 	if (lc($target) eq lc($nick)) {
 		gummydo($server, $target, "pongs.");
 	}
@@ -1179,6 +1178,26 @@ sub parse_command {
 	}
 }
 
+sub is_user_online {
+	my ($nick) = @_;
+	foreach my $channel (Irssi::channels()) {
+		my $nickhandle = $channel->nick_find($nick);
+		if ($nickhandle) {
+			return $nickhandle;
+		}
+	}
+	return undef;
+}
+
+sub is_user_in_channel {
+	my ($server, $channel_name, $nick) = @_;
+	my $channel = $server->channel_find($channel_name);
+	if ($channel) {
+		return $channel->nick_find($nick);
+	}
+	return undef;
+}
+
 # deliver_memos(server, target channel, nick)
 # delivers any stored memos for nick to the target channel
 sub deliver_memos {
@@ -1187,7 +1206,7 @@ sub deliver_memos {
 		# Connect to the database if we haven't already.
 		connect_to_database() or die("Couldn't open database. Check connection settings.");
 
-		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
+		my $memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
 			or die DBI->errstr;
 		$memo_query->execute(lc($nick))
 			or die DBI->errstr;
@@ -1197,10 +1216,12 @@ sub deliver_memos {
 		my $printed_header = 0;
 
 		while (my @memo = $memo_query->fetchrow_array()) {
-			my ($id, $source, $delivery, $created, $message) = @memo;
+			my ($id, $destination, $source, $delivery, $created, $message) = @memo;
 
 			my $memo_target = $target;
 			if ($delivery eq "PRIV") {
+				$memo_target = $nick;
+			} elsif ($delivery eq "GCOM") {
 				$memo_target = $nick;
 			}
 
@@ -1208,7 +1229,32 @@ sub deliver_memos {
 				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
 				$printed_header = 1;
 			}
+
 			gummydo($server, $memo_target, "[$created] $source: $message");			
+
+			# If it's not a gummy generated memo
+			if ($delivery ne "GCOM") {
+				# delivery a notice that they got it.
+				my $delivery_notice =  "Memo to $destination: '" . substr($message,0,30) ."' delivered.";
+				my $delivered = 0;
+
+				if ($delivery eq "PRIV") {
+					if (is_user_online($source)) {				
+						gummydo($server, $source, $delivery_notice);
+						$delivered = -1;
+					}
+				} else {
+					# If it's not a private memo and the sender's in the channel, they know.
+					if (is_user_in_channel($server,$target,$source)) {
+						$delivered = -1;
+					}
+				}
+
+				# If we haven't delivered the notification some other way, memo the user.
+				if (!$delivered) {
+					add_memo($source, "Postmaster Gummy", $delivery_notice, "GCOM");
+				}
+			}
 			push @purgelist,$id;
 		}
 
@@ -1287,7 +1333,7 @@ sub deliver_reminders {
 		if ($found) {
 			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
 		} else {
-			add_memo($reminder{nick}, "remindme", $reminder{message});
+			add_memo($reminder{nick}, "remindme", $reminder{message},"GCOM");
 		}
 	}
 	if ($changed) {
