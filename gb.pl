@@ -47,6 +47,7 @@ my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
+my $database_prefix; # Holds the table prefix.
 
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
@@ -74,12 +75,6 @@ Irssi::settings_add_str('GummyBot','Gummy_RootDir',''); # Sets the main folder w
 Irssi::settings_add_str('GummyBot','Gummy_LogFile','gummylog'); # Sets the name of the folder Gummy will use for logging.
 Irssi::settings_add_str('GummyBot','Gummy_DataFile','gummydata'); # Sets where Gummy will store his datastore.
 Irssi::settings_add_str('GummyBot','Gummy_OmAddFile','omadd'); # Sets where Gummy will store OM suggestions.
-
-#Database
-Irssi::settings_add_str('GummyBot', 'Gummy_Database','DBI:mysql:hostname=localhost;database=jmtest'); 
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabaseUser','user');
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePW','password');
-Irssi::settings_add_str('GummyBot', 'Gummy_DatabasePrefix','Gummy_');
 
 # Speed Limit
 Irssi::settings_add_time('GummyBot','Gummy_NickFloodLimit','10s'); # Set the time required between requests from a single nick.
@@ -170,6 +165,10 @@ sub isgummyop {
 # Commits the datastore to disk.
 sub write_datastore {
 	my %datastore;
+
+	# Open the database connection (if we're not already)
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
 	$datastore{greets}=\%greets;
 	#JMO: Disabled for DB access switch
 	#$datastore{memos}=\%memos;
@@ -184,6 +183,10 @@ sub write_datastore {
 sub read_datastore {
 	my %datastore=();
 	my $count;
+
+	# Open the database connection (if we're not already)
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
 	%greets=();
 	#JMO: Disabled for DB access switch
 	#%memos=();
@@ -222,13 +225,32 @@ sub read_datastore {
 
 sub connect_to_database {
 #bookmark
+	# ignore errors from this section; if we can't test the database
+	# state then making a new connection isn't a bad plan anyway.
 	eval {
-	# do the initial connection
-	$database = DBI->connect(Irssi::settings_get_str('Gummy_Database'),Irssi::settings_get_str('Gummy_DatabaseUser'), Irssi::settings_get_str('Gummy_DatabasePW'))
-		or die "Couldn't connect to database\n" . DBI->errstr;
+		# If we've got an open connection
+		if (defined $database) {
+			# and it's active
+			if ($database->Active()) {
+				# bail without doing anythin
+				return true;
+			}
+		}
+	}
 
-	# build up the various tables we need to do our work
-	$database->do("CREATE TABLE IF NOT EXISTS " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos
+	# Open a connection to the database.
+	eval {
+		my $dbconfig = Config::Tiny->new();
+		$dbconfig = $dbconfig->read(getdir("dbconfig"));
+		
+		$database_prefix = $dbconfig->{database}->{prefix};
+
+		# do the initial connection
+		$database = DBI->connect($dbconfig->{database}->{connectstring},$dbconfig->{database}->{username}, $dbconfig->{database}->{password})
+			or die "Couldn't connect to database\n" . DBI->errstr;
+
+		# build up the various tables we need to do our work
+		$database->do("CREATE TABLE IF NOT EXISTS ". $database_prefix ."memos
 				(ID INT AUTO_INCREMENT PRIMARY KEY,
 				Nick CHAR(30),
 				SourceNick CHAR(30) NOT NULL,
@@ -238,12 +260,14 @@ sub connect_to_database {
 				INDEX (Nick)
 				)
 			") 
-		or die "Failed to make memo table\n" . DBI->errstr;
+			or die "Failed to make memo table\n" . DBI->errstr;
 
 	};
 	if ($@) {
 		print $@;
+		return false;
 	}
+	return true;
 }
 
 
@@ -853,7 +877,7 @@ sub cmd_autogreet {
 $commands{'memo'} = {
 		cmd => \&cmd_memo,
 		short_help => "<target> <text>",
-		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active."
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM."
 	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -891,7 +915,11 @@ sub add_memo {
 	my ($to, $from, $message, $mode) = @_;
 	#my $timestr;
 	#$timestr = strftime('%Y-%m-%d %R %Z',localtime);
-	my $insert_query = $database -> prepare_cached("INSERT INTO " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
+
+	# initialize the connection to the database if we need to.
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+	
+	my $insert_query = $database -> prepare_cached("INSERT INTO " . $database_prefix . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
 		or die DBI->errstr;
 	$insert_query->execute(lc($to), $from, $mode, $message)
 		or die DBI->errstr;
@@ -1052,6 +1080,17 @@ sub cmd_seen {
 	}
 }
 
+$commands{'ping'} = {
+		cmd=>\&cmd_help,
+		help => "Causes gummy to emit pong if sent in a private message. Useful for checking for memos."
+	};
+sub cmd_ping {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (lc($target) eq lc($nick)) {
+		gummydo($server, $target, "pongs.");
+	}
+}
+
 $commands{'help'} = {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
@@ -1141,10 +1180,13 @@ sub parse_command {
 sub deliver_memos {
 	my ($server, $target, $nick) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
-		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE nick=?")
-			or die $database->errstr;
+		# Connect to the database if we haven't already.
+		connect_to_database() or die("Couldn't open database. Check connection settings.");
+
+		my $memo_query = $database->prepare_cached("SELECT ID, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
+			or die DBI->errstr;
 		$memo_query->execute(lc($nick))
-			or die $database->errstr;
+			or die DBI->errstr;
 
 		my @purgelist;
 
@@ -1166,11 +1208,11 @@ sub deliver_memos {
 			push @purgelist,$id;
 		}
 
-		my $purge_query = $database->prepare_cached("DELETE FROM " . Irssi::settings_get_str('Gummy_DatabasePrefix') . "memos WHERE ID=?")
-			or die $database->errstr;
+		my $purge_query = $database->prepare_cached("DELETE FROM " . $database_prefix . "memos WHERE ID=?")
+			or die DBI->errstr;
 		
 		$purge_query->execute_array({ ArrayTupleStatus => \my @tuple_status },\@purgelist)
-			or die $database->errstr;
+			or die DBI->errstr;
 
 #bookmark
 	}
@@ -1629,6 +1671,19 @@ sub gummy_command {
 		$lastblink = 0;
 		event_minutely_tick("");
 	}
+	elsif ($cmd eq "resetdb") {
+		eval{ 
+			if (defined $database) {
+				if ($database->Active()) {
+					$database->disconnect();
+				}
+			}
+		}
+		connect_to_database();
+	}
+	else {
+		print "GUMMY: Command '$cmd' not recognized.";
+	}
 }
 
 # Bind our command
@@ -1642,9 +1697,6 @@ Irssi::signal_add("message kick","event_nick_kick");
 Irssi::signal_add("message quit","event_nick_quit");
 Irssi::signal_add("nicklist changed","event_nick_change");
 Irssi::signal_add("message irc action", "event_action");
-
-# Open the database connection
-connect_to_database();
 
 # Lastly, if we've been told to start on, boot Gummy quietly.
 
