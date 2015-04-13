@@ -11,7 +11,7 @@ use LWP::Simple;
 use Switch;
 use DBI;
 
-my $gummyver = "b3.0.0";
+my $gummyver = "b3.0.1-dev";
 
 #
 #Module Header
@@ -1235,7 +1235,13 @@ sub deliver_memos {
 			# If it's not a gummy generated memo
 			if ($delivery ne "GCOM") {
 				# delivery a notice that they got it.
-				my $delivery_notice =  "Memo to $destination: '" . substr($message,0,30) ."' delivered.";
+
+				# Generate the snippit
+				my $message_snippit = $message;
+				if (length($message_snippit) > 30) {
+					$message_snippit = substr($message_snippit,0,27) . "...";
+				}
+				my $delivery_notice =  "Memo to $destination: '" . $message_snippit ."' delivered.";
 				my $delivered = 0;
 
 				if ($delivery eq "PRIV") {
