@@ -11,7 +11,7 @@ use LWP::Simple;
 use Switch;
 use DBI;
 
-my $gummyver = "b3.0.0";
+my $gummyver = "b3.0.1-dev";
 
 #
 #Module Header
@@ -906,7 +906,23 @@ sub cmd_memo {
 
 	add_memo($who, $nick, $args, $mode);
 
-	gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
+	# Check to see if we've heard from the target in the last week so we
+	# can warn about probable nick errors.
+
+	my $lcwho = lc($who);
+	foreach my $channelname (keys %activity) {
+		# Check to see if we've heard on that pony in this channel.
+		if (defined $activity{$channelname}->{$lcwho}) {
+			# And if so, check to see if we last heard from them in the last week.
+			if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
+				gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
+				return; # Bail since we found the nick and reported the result.
+			} else {
+				last; # we found the nick but it's stale, give the alternate message.
+			}
+		}
+	}
+	gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 }
 
 # add_memo(to, from, message, [mode])
@@ -1235,7 +1251,13 @@ sub deliver_memos {
 			# If it's not a gummy generated memo
 			if ($delivery ne "GCOM") {
 				# delivery a notice that they got it.
-				my $delivery_notice =  "Memo to $destination: '" . substr($message,0,30) ."' delivered.";
+
+				# Generate the snippit
+				my $message_snippit = $message;
+				if (length($message_snippit) > 30) {
+					$message_snippit = substr($message_snippit,0,27) . "...";
+				}
+				my $delivery_notice =  "Memo to $destination: '" . $message_snippit ."' delivered.";
 				my $delivered = 0;
 
 				if ($delivery eq "PRIV") {
