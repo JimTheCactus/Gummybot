@@ -960,39 +960,42 @@ sub cmd_memo {
 
 	my $lcwho = lc($who);
 
-	# if they call out a nick group (- prefix)
-	if (substr($lcwho,0,1) eq "-") {
-		# get the nick they use
-		my $targetnick = substr($lcwho,1);
+	# if they call don't call out out a direct delivery
+	if (substr($lcwho,0,1) ne "-") {
 		# find out what group they belong to
-		my $groupid = $nicklinks{$targetnick};
-		# and if none, Error out.
-		if (!$groupid) {
-			gummydo($server, $target, "that nick group doesn't exist and cannot be memoed.");
+		my $groupid = $nicklinks{$lcwho};
+		# and if they're in a group send the memo and bail
+		if ($groupid) {
+			add_memo($groupid, $nick, $args, $mode);
+			gummydo($server,$target,"stores the message in his databanks for later delivery to the $who or their group.");
 			return;
 		}
-		add_memo($groupid, $nick, $args, $mode);
-		gummydo($server,$target,"stores the message in his databanks for later delivery to the group.");
+		# if not, consider it direct delivery.
 	}
+	# if they do call out direct delivery, strip the prefix
 	else {
-		add_memo($who, $nick, $args, $mode);		
-		# Check to see if we've heard from the target in the last week so we
-		# can warn about probable nick errors.
+		$who=substr($who,1);
+		$lcwho=lc($who);
+	}
 
-		foreach my $channelname (keys %activity) {
-			# Check to see if we've heard on that pony in this channel.
-			if (defined $activity{$channelname}->{$lcwho}) {
-				# And if so, check to see if we last heard from them in the last week.
-				if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
-					gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
-					return; # Bail since we found the nick and reported the result.
-				} else {
-					last; # we found the nick but it's stale, give the alternate message.
-				}
+	add_memo($who, $nick, $args, $mode);		
+
+	# Check to see if we've heard from the target in the last week so we
+	# can warn about probable nick errors.
+
+	foreach my $channelname (keys %activity) {
+		# Check to see if we've heard on that pony in this channel.
+		if (defined $activity{$channelname}->{$lcwho}) {
+			# And if so, check to see if we last heard from them in the last week.
+			if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
+				gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
+				return; # Bail since we found the nick and reported the result.
+			} else {
+				last; # we found the nick but it's stale, give the alternate message.
 			}
 		}
-		gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
+	gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 }
 
 # add_memo(to, from, message, [mode])
