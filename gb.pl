@@ -49,6 +49,13 @@ my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
 my $database_prefix; # Holds the table prefix.
 
+# Authorization requests must be a hashtable with the following parameters:
+# 'tag' - The timeout tag used to timeout an auth request.
+# 'callback' - A function reference to the function we're supposed to call when we hear back from nickserv
+# 'args' - The args we're supposed to hand to the callback
+my %authrequests=(); # Holds pending authorization requests
+ 
+
 # Establish the settings and their defaults
 Irssi::settings_add_bool('GummyBot','Gummy_AutoOn',0); # Determines if gummy starts himself when loaded.
 
@@ -158,6 +165,44 @@ sub isgummyop {
 	}
 	else {
 		return 0;
+	}
+}
+
+
+# async_isregistered(server, nick, callback, callbackargs)
+# Requests an authorization from nickserv
+# Calls callback with two arguments: \$callback(status, nick, callbackargs)
+# status will be the normal results from nickserv (3 is authorized) or -1 if there was a timeout.
+# callbackargs will just be forward from the call to isregistered
+sub async_isregistered {
+	my ($server, $nick, $callback, $callbackargs) = @_;
+	$nick = lc($nick);
+
+	# Start the timeout timer
+	my $tag = Irssi::timeout_add_once(3000, \&registered_timeout, $nick);
+	# Build the authorization request ID
+	$authrequests{$nick} =
+	{
+		'callback' => $callback,
+		'args' => $callbackargs,
+		'tag' => $tag,
+	};
+
+	# and issue the request to nickserv.
+	$server->command("msg nickserv status $nick");
+}
+
+sub registered_timeout {
+	my ($nick) = @_;
+	eval {
+		if (defined $authrequests{$nick}) {
+			my %request = %{$authrequests{$nick}};
+			delete $authrequests{$nick};
+			$request{callback}->(-1,$nick,$request{args});
+		}
+	};
+	if ($@) {
+		print ("GUMMY CRITICAL in auth timeout: $@");
 	}
 }
 
@@ -1572,6 +1617,31 @@ sub event_action {
 	}	
 }
 
+# Called when a user does an ACTION
+# Implements "message irc notice"
+sub event_notice {
+	my ($server, $msg, $nick, $address, $target) = @_;
+	#DEBUG
+	print "Notice received. Source $nick. Content: $msg";
+	eval {
+		if (lc($nick) eq "nickserv") {
+			my ($cmd, $testnick, $mode) = split(/\s+/, $msg, 3);
+			$testnick = lc($testnick);
+			
+			if (defined $authrequests{$testnick}) {
+				my %request = %{$authrequests{$testnick}};
+				delete $authrequests{$testnick};
+				$request{callback}->($mode,$testnick,$request{args});
+				Irssi::timeout_remove($request{tag});
+			}
+		}
+	};
+	if ($@) {
+		logtext("ERROR","event_notice",$@);
+		print("GUMMY CRITICAL: event_notice, $@");
+	}	
+}
+
 # Called when a user joins
 # Implements "message join"
 sub event_nick_join {
@@ -1770,6 +1840,7 @@ Irssi::signal_add("message kick","event_nick_kick");
 Irssi::signal_add("message quit","event_nick_quit");
 Irssi::signal_add("nicklist changed","event_nick_change");
 Irssi::signal_add("message irc action", "event_action");
+Irssi::signal_add("message irc notice", "event_notice");
 
 # Lastly, if we've been told to start on, boot Gummy quietly.
 
