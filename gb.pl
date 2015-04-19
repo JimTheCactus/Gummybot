@@ -48,6 +48,8 @@ my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
 my $database_prefix; # Holds the table prefix.
+my %nicklinks; # Holds the table of nick group aliases
+my %pendingnicklinks; # Pending nick linkings.
 
 # Authorization requests must be a hashtable with the following parameters:
 # 'tag' - The timeout tag used to timeout an auth request.
@@ -220,6 +222,7 @@ sub write_datastore {
 	$datastore{reminders}=\@reminders;
 	$datastore{aliases}=\%aliases;
 	$datastore{activity}=\%activity;
+	$datastore{nicklinks}=\%nicklinks;
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
 }
 
@@ -237,6 +240,7 @@ sub read_datastore {
 	#%memos=();
 	@reminders=();
 	%aliases=();
+	%nicklinks=();
 	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
 		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
 		if (defined($datastore{greets})) {
@@ -264,6 +268,11 @@ sub read_datastore {
 			%aliases = %{$datastore{aliases}};
 			$count = scalar keys %aliases;
 			print("Loaded inferred aliases for $count nicks.");
+		}
+		if (defined($datastore{nicklinks})) {
+			%nicklinks = %{$datastore{nicklinks}};
+			$count = scalar keys %nicklinks;
+			print("Loaded grouping assignments for $count nicks.");
 		}
 	}
 }
@@ -922,7 +931,7 @@ sub cmd_autogreet {
 $commands{'memo'} = {
 		cmd => \&cmd_memo,
 		short_help => "<target> <text>",
-		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM."
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM. Prefixing the nickname with a - will sent it to the nicks group if they're part of one."
 	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -949,25 +958,41 @@ sub cmd_memo {
 		$mode = "PRIV";
 	}
 
-	add_memo($who, $nick, $args, $mode);
-
-	# Check to see if we've heard from the target in the last week so we
-	# can warn about probable nick errors.
-
 	my $lcwho = lc($who);
-	foreach my $channelname (keys %activity) {
-		# Check to see if we've heard on that pony in this channel.
-		if (defined $activity{$channelname}->{$lcwho}) {
-			# And if so, check to see if we last heard from them in the last week.
-			if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
-				gummydo($server,$target,"stores the message in his databanks for later delivery to $who");
-				return; # Bail since we found the nick and reported the result.
-			} else {
-				last; # we found the nick but it's stale, give the alternate message.
+
+	# if they call out a nick group (- prefix)
+	if (substr($lcwho,0,1) eq "-") {
+		# get the nick they use
+		my $targetnick = substr($lcwho,1);
+		# find out what group they belong to
+		my $groupid = $nicklinks{$targetnick};
+		# and if none, Error out.
+		if (!$groupid) {
+			gummydo($server, $target, "that nick group doesn't exist and cannot be memoed.");
+			return;
+		}
+		add_memo($groupid, $nick, $args, $mode);
+		gummydo($server,$target,"stores the message in his databanks for later delivery to the group.");
+	}
+	else {
+		add_memo($who, $nick, $args, $mode);		
+		# Check to see if we've heard from the target in the last week so we
+		# can warn about probable nick errors.
+
+		foreach my $channelname (keys %activity) {
+			# Check to see if we've heard on that pony in this channel.
+			if (defined $activity{$channelname}->{$lcwho}) {
+				# And if so, check to see if we last heard from them in the last week.
+				if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
+					gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
+					return; # Bail since we found the nick and reported the result.
+				} else {
+					last; # we found the nick but it's stale, give the alternate message.
+				}
 			}
 		}
+		gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
-	gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 }
 
 # add_memo(to, from, message, [mode])
@@ -1155,6 +1180,160 @@ sub cmd_ping {
 	}
 }
 
+$commands{'link'} = {
+		cmd=>\&cmd_link,
+		short_help => "create | join <nick to join> | auth <nick to approve> | leave",
+		help => "Causes Gummy to create a nick group, ask to join a nick group, authorize nick group request, or leave the nick group. You will need to issue this command from a registered nick."
+	};
+sub cmd_link {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my ($cmd,@params) = split(/\s+/, $args);
+	$cmd = lc($cmd);
+	$nick = lc($nick);
+
+		# TODO
+		# We want this to work such that the main nick asks to create a nickgroup.
+		#   We ask the server if they think we're okay and then created it
+		# Then the main user asks to add an additional nick to the group.
+		#   We ask the server if they think we're okay and then make pending request
+		# Then the new nick accepts the pending request
+		#   We ask the server if they think we're okay and make an actual link
+
+
+	if ($cmd eq "create") {
+		my $groupid = "-" . $nick;
+
+		if ($nicklinks{$nick}) {
+			gummydo($server,$target,"blinks with a confused look. This nick is already in a group.");
+			return;
+		}
+
+		# and ask the server if we're registered, calling the create routine with the result.
+		async_isregistered($server, $nick, \&link_creategroup_callback, {'server'=>$server, 'target'=>$target, 'id'=>$groupid});
+	}
+	elsif ($cmd eq "join") {
+		if (!$params[0]) {
+			gummydo($server,$target,"blinks with a confused look. You must provide a nick from a group you'd like to join.");
+			return;
+		}
+		# get the nick we want to join
+		my $targetnick = lc($params[0]);
+		# get the group it's part of.
+		my $groupid = $nicklinks{$targetnick};
+		if (!$groupid) {
+			gummydo($server,$target,"blinks with a confused look. That nick is not part of a group.");
+			return;
+		}
+		# and ask the server if we're registered, calling the join request routine with the result.
+		async_isregistered($server, $nick, \&link_asktojoin_callback, {'server'=>$server, 'target'=>$target, 'id'=>$groupid, 'joinnick'=>$targetnick});
+	}
+	elsif ($cmd eq "auth") {
+		if (!$params[0]) {
+			gummydo($server,$target,"blinks with a confused look. You must provide the nick you'd like to authorize to join your group.");
+			return;
+		}
+		if (!$nicklinks{$nick}) {
+			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group.");
+			return;		
+		}
+
+		# get the nick we want to join
+		my $targetnick = lc($params[0]);
+		# get the group it's part of.
+		my $groupid = $pendingnicklinks{$targetnick};
+
+		if (!$groupid) {
+			gummydo($server,$target,"blinks with a confused look. That nick does not have a pending request to join.");
+			return;
+		}
+		if ($groupid != $nicklinks{$nick}) {
+			gummydo($server,$target,"blinks with a confused look. That nick is not asking to join your group.");
+			return;
+		}
+
+		# and ask the server if we're registered, calling the join request routine with the result.
+		async_isregistered($server, $nick, \&link_auth_callback, {'server'=>$server, 'target'=>$target, 'id'=>$groupid, 'authnick'=>$targetnick});
+	}
+	elsif ($cmd eq "leave") {
+		if (!$nicklinks{$nick}) {
+			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group anyway.");
+			return;		
+		}
+		async_isregistered($server, $nick, \&link_leave_callback, {'server'=>$server, 'target'=>$target});
+	}
+	#DEBUG
+	elsif ($cmd eq "mygroup") {
+		gummydo($server,$target,"You are part of " . $nicklinks{lc($nick)});
+	}
+}
+
+# Data here is a hash reference with server, target, and id.
+sub link_creategroup_callback {
+	my ($status, $nick, $data) = @_;
+	if ($status == 3) {
+		$nicklinks{$nick} = $data->{id};
+		write_datastore();
+		gummydo($data->{server},$data->{target},"makes a new nick group for $nick.");
+	}
+	elsif ($status < 0) {
+		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your nick group was not created.");
+	}
+	else {
+		gummydo($data->{server},$data->{target},"rejects your request to create a nickgroup for $nick because you're not authorized by nickserv.");
+	}
+}
+
+# Data here is a hash reference with server, target, id, and joinnick.
+# joinnick is the nick the user asked to join. We're trying to hide the internal representation of nick groups.
+sub link_asktojoin_callback {
+	my ($status, $nick, $data) = @_;
+
+	if ($status == 3) {
+		$pendingnicklinks{$nick} = $data->{id};
+		gummydo($data->{server},$data->{target},"creates a request to join " . $data->{joinnick} ."'s nick group.");
+	}
+	elsif ($status < 0) {
+		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to join was discarded.");
+	}
+	else {
+		gummydo($data->{server},$data->{target},"rejects your request to join " . $data->{joinnick} ."'s nickgroup because you're not authorized by nickserv.");
+	}	
+}
+
+# Data here is a hash reference with server, target, id, and authnick.
+# joinnick is the nick the user being authorized.
+sub link_auth_callback {
+	my ($status, $nick, $data) = @_;
+
+	if ($status == 3) {
+		$nicklinks{$data->{authnick}} = $pendingnicklinks{$data->{authnick}};
+		write_datastore();
+		gummydo($data->{server},$data->{target},"joins " . $data->{authnick} ." to your nick group.");
+	}
+	elsif ($status < 0) {
+		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to authorize was discarded.");
+	}
+	else {
+		gummydo($data->{server},$data->{target},"rejects your request to authorize " . $data->{authnick} ."'s to your group because you're not authorized by nickserv.");
+	}	
+}
+
+sub link_leave_callback {
+	my ($status, $nick, $data) = @_;
+
+	if ($status == 3) {
+		delete $nicklinks{$nick};
+		write_datastore();
+		gummydo($data->{server},$data->{target},"removes you from the group.");
+	}
+	elsif ($status < 0) {
+		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to leave was discarded.");
+	}
+	else {
+		gummydo($data->{server},$data->{target},"rejects your request to leave your group because you're not authorized by nickserv.");
+	}	
+}
+
 $commands{'help'} = {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
@@ -1267,10 +1446,20 @@ sub deliver_memos {
 		# Connect to the database if we haven't already.
 		connect_to_database() or die("Couldn't open database. Check connection settings.");
 
-		my $memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
-			or die DBI->errstr;
-		$memo_query->execute(lc($nick))
-			or die DBI->errstr;
+		my $groupid = $nicklinks{lc($nick)};
+		my $memo_query;
+		if (!$groupid) {
+			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
+				or die DBI->errstr;
+			$memo_query->execute(lc($nick))
+				or die DBI->errstr;
+		}
+		else {
+			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=? OR nick=?")
+				or die DBI->errstr;
+			$memo_query->execute(lc($nick),$groupid)
+				or die DBI->errstr;
+		}
 
 		my @purgelist;
 
@@ -1621,8 +1810,6 @@ sub event_action {
 # Implements "message irc notice"
 sub event_notice {
 	my ($server, $msg, $nick, $address, $target) = @_;
-	#DEBUG
-	print "Notice received. Source $nick. Content: $msg";
 	eval {
 		if (lc($nick) eq "nickserv") {
 			my ($cmd, $testnick, $mode) = split(/\s+/, $msg, 3);
