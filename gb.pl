@@ -11,7 +11,7 @@ use LWP::Simple;
 use Switch;
 use DBI;
 
-my $gummyver = "b3.0.1-dev";
+my $gummyver = "b3.1.0-dev";
 
 #
 #Module Header
