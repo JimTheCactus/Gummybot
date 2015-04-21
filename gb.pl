@@ -357,17 +357,21 @@ sub isnick_in_nickgroup {
 }
 
 sub isnickgroup_in_channel {
-	my ($channelref,$groupid) = @_;
+	my ($channelref, $groupid) = @_;
+	if (!defined $groupid) {
+		return undef;
+	}
 
 	connect_to_database() or die("Couldn't open database. Check connection settings.");
 
-	my $group_query = $database->prepare_cached("SELECT Nick FROM " . $database_prefix . "nickgroups WHERE nick=?")
+	my $group_query = $database->prepare_cached("SELECT Nick FROM " . $database_prefix . "nickgroups WHERE nickgroup=?")
 		or die DBI->errstr;
 	$group_query->execute($groupid)
 		or die DBI->errstr;
 
 	# grab all the nicks in this group
 	while (my @nickgroup = $group_query->fetchrow_array()) {
+		print "Checking for nick " . $nickgroup[0];
 		# and if we found our nick in this channel
 		if ($channelref->nick_find($nickgroup[0])) {
 			# flush the handle
@@ -1177,6 +1181,8 @@ sub cmd_remindme {
 			last;
 		}
 	}
+
+
 	# dump our reminder into the right spot in the list. If the reminder is after the last one, index will be at
 	# the position after the end of the list so it will naturally be added at the end.
 	splice @reminders,$index,0,\%reminder;
@@ -1652,11 +1658,22 @@ sub deliver_reminders {
 				if ($channel->nick_find($reminder{nick}) || $channel->nick_find($reminder{tracked_nick})) {
 					$found = 1;
 				}
+				else {
+					my $groupid = get_nickgroup_from_nick($reminder{nick},1);
+					if (isnickgroup_in_channel($channel,$groupid)) {
+						$found = 1;
+					}
+				}
 			}
 		} else {
+			my $groupid = get_nickgroup_from_nick($reminder{nick},1);
 			foreach my $tmpchannel (Irssi::channels()) {
 				if ($tmpchannel->nick_find($reminder{nick}) || $tmpchannel->nick_find($reminder{tracked_nick})) {
 					$channel=$tmpchannel;
+					$found = 1;
+					last;
+				}
+				elsif (isnickgroup_in_channel($channel,$groupid)) {
 					$found = 1;
 					last;
 				}
