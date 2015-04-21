@@ -48,7 +48,6 @@ my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
 my $database_prefix; # Holds the table prefix.
-my %nicklinks; # Holds the table of nick group aliases
 my %pendingnicklinks; # Pending nick linkings.
 
 # Authorization requests must be a hashtable with the following parameters:
@@ -222,7 +221,6 @@ sub write_datastore {
 	$datastore{reminders}=\@reminders;
 	$datastore{aliases}=\%aliases;
 	$datastore{activity}=\%activity;
-	$datastore{nicklinks}=\%nicklinks;
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
 }
 
@@ -240,7 +238,6 @@ sub read_datastore {
 	#%memos=();
 	@reminders=();
 	%aliases=();
-	%nicklinks=();
 	if (-e getdir(Irssi::settings_get_str('Gummy_DataFile'))) {
 		%datastore = %{retrieve(getdir(Irssi::settings_get_str('Gummy_DataFile')))};
 		if (defined($datastore{greets})) {
@@ -268,11 +265,6 @@ sub read_datastore {
 			%aliases = %{$datastore{aliases}};
 			$count = scalar keys %aliases;
 			print("Loaded inferred aliases for $count nicks.");
-		}
-		if (defined($datastore{nicklinks})) {
-			%nicklinks = %{$datastore{nicklinks}};
-			$count = scalar keys %nicklinks;
-			print("Loaded grouping assignments for $count nicks.");
 		}
 	}
 }
@@ -316,12 +308,98 @@ sub connect_to_database {
 			") 
 			or die "Failed to make memo table\n" . DBI->errstr;
 
+		$database->do("CREATE TABLE IF NOT EXISTS ". $database_prefix ."nickgroups
+				(Nick CHAR(30) PRIMARY KEY,
+				NickGroup CHAR(31) NOT NULL,
+				INDEX (Nick), INDEX (NickGroup)
+				)
+			") 
+			or die "Failed to make nickgroup table\n" . DBI->errstr;
+
 	};
 	if ($@) {
 		print $@;
 		return 0;
 	}
 	return -1;
+}
+# get_nickgroup_from_nick(nick, undefifungrouped)
+# Returns the nickgroup for thatnick. Unless undefifungrouped is true
+# the nick itself will be returned if the nick is ungrouped.
+sub get_nickgroup_from_nick {
+	my ($nick, $undefifungrouped) = @_;
+	# Connect to the database if we haven't already.
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
+	my $group_query = $database->prepare_cached("SELECT NickGroup FROM " . $database_prefix . "nickgroups WHERE nick=?")
+		or die DBI->errstr;
+	$group_query->execute(lc($nick))
+		or die DBI->errstr;
+	if (my @nickgroup = $group_query->fetchrow_array()) {
+		return @nickgroup[0];
+	}
+	elsif ($undefifungrouped) {
+		return undef;
+	}
+	else {
+		return $nick;
+	}	
+}
+
+sub isnick_in_nickgroup {
+	my ($nick, $nickgroup) = @_;
+	if ($nickgroup eq get_nickgroup_from_nick($nick, 1)) {
+		return -1;
+	}
+	else {
+		return 0;
+	}
+}
+
+sub isnickgroup_in_channel {
+	my ($channelref,$groupid) = @_;
+
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
+	my $group_query = $database->prepare_cached("SELECT Nick FROM " . $database_prefix . "nickgroups WHERE nick=?")
+		or die DBI->errstr;
+	$group_query->execute($groupid)
+		or die DBI->errstr;
+
+	# grab all the nicks in this group
+	while (my @nickgroup = $group_query->fetchrow_array()) {
+		# and if we found our nick in this channel
+		if ($channelref->nick_find($nickgroup[0])) {
+			# flush the handle
+			$group_query->finish();
+			# and bail
+			return $nickgroup[0];
+		}
+	}
+	return undef;
+}
+
+sub add_or_update_nicklink {
+	my ($nick,$groupid) = @_;
+	$nick = lc($nick);
+
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+	my $group_query = $database->prepare_cached("INSERT INTO " . $database_prefix . "nickgroups
+				(Nick, Nickgroup) VALUES(?,?)
+				ON DUPLICATE KEY
+				UPDATE NickGroup=?")
+		or die DBI->errstr;
+	$group_query->execute($nick,$groupid,$groupid)
+		or die DBI->errstr;
+}
+
+sub remove_nicklink {
+	my ($nick) = @_;
+
+	my $group_query = $database->prepare_cached("DELETE FROM " . $database_prefix . "nickgroups WHERE nick=?")
+		or die DBI->errstr;
+	$group_query->execute(lc($nick))
+		or die DBI->errstr;
 }
 
 
@@ -992,17 +1070,10 @@ sub cmd_memo {
 # a group, and 1 for explicitly direct groups.
 sub memo_get_greedy_destination {
 	my ($to) = @_;	
-	my $lcto = lc($to);
 
 	# if they call don't call out out a direct delivery
-	if (substr($lcto,0,1) ne "-") {
-		# find out what group they belong to
-		my $groupid = $nicklinks{$lcto};
-		# and if they're in a group send the memo and bail
-		if ($groupid) {
-			return (0,$groupid);
-		}
-		return (-1,$to);
+	if (substr($to,0,1) ne "-") {
+		return get_nickgroup_from_nick($to)
 	}
 	else {
 		return (1,substr($to,1));
@@ -1206,19 +1277,10 @@ sub cmd_link {
 	$cmd = lc($cmd);
 	$nick = lc($nick);
 
-		# TODO
-		# We want this to work such that the main nick asks to create a nickgroup.
-		#   We ask the server if they think we're okay and then created it
-		# Then the main user asks to add an additional nick to the group.
-		#   We ask the server if they think we're okay and then make pending request
-		# Then the new nick accepts the pending request
-		#   We ask the server if they think we're okay and make an actual link
-
-
 	if ($cmd eq "create") {
 		my $groupid = "-" . $nick;
 
-		if ($nicklinks{$nick}) {
+		if (get_nickgroup_from_nick($nick,1)) {
 			gummydo($server,$target,"blinks with a confused look. This nick is already in a group.");
 			return;
 		}
@@ -1234,7 +1296,7 @@ sub cmd_link {
 		# get the nick we want to join
 		my $targetnick = lc($params[0]);
 		# get the group it's part of.
-		my $groupid = $nicklinks{$targetnick};
+		my $groupid = get_nickgroup_from_nick($targetnick,1);
 		if (!$groupid) {
 			gummydo($server,$target,"blinks with a confused look. That nick is not part of a group.");
 			return;
@@ -1247,7 +1309,9 @@ sub cmd_link {
 			gummydo($server,$target,"blinks with a confused look. You must provide the nick you'd like to authorize to join your group.");
 			return;
 		}
-		if (!$nicklinks{$nick}) {
+		my $mygroup = get_nickgroup_from_nick($nick,1);
+
+		if (!$mygroup) {
 			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group.");
 			return;		
 		}
@@ -1261,7 +1325,7 @@ sub cmd_link {
 			gummydo($server,$target,"blinks with a confused look. That nick does not have a pending request to join.");
 			return;
 		}
-		if ($groupid != $nicklinks{$nick}) {
+		if ($groupid != $mygroup) {
 			gummydo($server,$target,"blinks with a confused look. That nick is not asking to join your group.");
 			return;
 		}
@@ -1270,7 +1334,7 @@ sub cmd_link {
 		async_isregistered($server, $nick, \&link_auth_callback, {'server'=>$server, 'target'=>$target, 'id'=>$groupid, 'authnick'=>$targetnick});
 	}
 	elsif ($cmd eq "leave") {
-		if (!$nicklinks{$nick}) {
+		if (!get_nickgroup_from_nick($nick,1)) {
 			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group anyway.");
 			return;		
 		}
@@ -1278,7 +1342,7 @@ sub cmd_link {
 	}
 	#DEBUG
 	elsif ($cmd eq "mygroup") {
-		gummydo($server,$target,"You are part of " . $nicklinks{lc($nick)});
+		gummydo($server,$target,"You are part of " . get_nickgroup_from_nick($nick,1));
 	}
 }
 
@@ -1286,8 +1350,7 @@ sub cmd_link {
 sub link_creategroup_callback {
 	my ($status, $nick, $data) = @_;
 	if ($status == 3) {
-		$nicklinks{$nick} = $data->{id};
-		write_datastore();
+		add_or_update_nicklink($nick,$data->{id});
 		gummydo($data->{server},$data->{target},"makes a new nick group for $nick.");
 	}
 	elsif ($status < 0) {
@@ -1321,8 +1384,8 @@ sub link_auth_callback {
 	my ($status, $nick, $data) = @_;
 
 	if ($status == 3) {
-		$nicklinks{$data->{authnick}} = $pendingnicklinks{$data->{authnick}};
-		write_datastore();
+		add_or_update_nicklink($data->{authnick},$pendingnicklinks{$data->{authnick}});
+		delete $pendingnicklinks{$data->{authnick}};
 		gummydo($data->{server},$data->{target},"joins " . $data->{authnick} ." to your nick group.");
 	}
 	elsif ($status < 0) {
@@ -1337,8 +1400,7 @@ sub link_leave_callback {
 	my ($status, $nick, $data) = @_;
 
 	if ($status == 3) {
-		delete $nicklinks{$nick};
-		write_datastore();
+		remove_nicklink($nick);
 		gummydo($data->{server},$data->{target},"removes you from the group.");
 	}
 	elsif ($status < 0) {
@@ -1461,7 +1523,7 @@ sub deliver_memos {
 		# Connect to the database if we haven't already.
 		connect_to_database() or die("Couldn't open database. Check connection settings.");
 
-		my $groupid = $nicklinks{lc($nick)};
+		my $groupid = get_nickgroup_from_nick($nick,1);
 		my $memo_query;
 		if (!$groupid) {
 			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
