@@ -958,61 +958,73 @@ sub cmd_memo {
 		$mode = "PRIV";
 	}
 
-	my $lcwho = lc($who);
+	# Send the memo.
+	my $status = add_memo($who, $nick, $args, $mode);
 
-	# if they call don't call out out a direct delivery
-	if (substr($lcwho,0,1) ne "-") {
-		# find out what group they belong to
-		my $groupid = $nicklinks{$lcwho};
-		# and if they're in a group send the memo and bail
-		if ($groupid) {
-			add_memo($groupid, $nick, $args, $mode);
-			gummydo($server,$target,"stores the message in his databanks for later delivery to the $who or their group.");
-			return;
-		}
-		# if not, consider it direct delivery.
+	# If we found a group to send it to
+	if ($status == 0) {
+		gummydo($server,$target,"stores the message in his databanks for later delivery to $who or their group.");
 	}
-	# if they do call out direct delivery, strip the prefix
 	else {
-		$who=substr($who,1);
-		$lcwho=lc($who);
-	}
-
-	add_memo($who, $nick, $args, $mode);		
-
-	# Check to see if we've heard from the target in the last week so we
-	# can warn about probable nick errors.
-
-	foreach my $channelname (keys %activity) {
-		# Check to see if we've heard on that pony in this channel.
-		if (defined $activity{$channelname}->{$lcwho}) {
-			# And if so, check to see if we last heard from them in the last week.
-			if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
-				gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
-				return; # Bail since we found the nick and reported the result.
-			} else {
-				last; # we found the nick but it's stale, give the alternate message.
+		# Check to see if we've heard from the target in the last week so we
+		# can warn about probable nick errors.
+		my $lcwho = lc($who);
+		foreach my $channelname (keys %activity) {
+			# Check to see if we've heard on that pony in this channel.
+			if (defined $activity{$channelname}->{$lcwho}) {
+				# And if so, check to see if we last heard from them in the last week.
+				if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
+					gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
+					return; # Bail since we found the nick and reported the result.
+				} else {
+					last; # we found the nick but it's stale, give the alternate message.
+				}
 			}
 		}
+		# if we didn't find the nick or it was stale, warn the user
+		gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
-	gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
+}
+
+# memo_get_greedy_destination(to)
+# returns a two element list. The first element is the return status
+# this is 0 for nick groups, -1 for nicks that weren't associated with
+# a group, and 1 for explicitly direct groups.
+sub memo_get_greedy_destination {
+	my ($to) = @_;	
+	my $lcto = lc($to);
+
+	# if they call don't call out out a direct delivery
+	if (substr($lcto,0,1) ne "-") {
+		# find out what group they belong to
+		my $groupid = $nicklinks{$lcto};
+		# and if they're in a group send the memo and bail
+		if ($groupid) {
+			return (0,$groupid);
+		}
+		return (-1,$to);
+	}
+	else {
+		return (1,substr($to,1));
+	}
 }
 
 # add_memo(to, from, message, [mode])
 # Adds a memo to be delivered later. If mode = PRIV then deliver privately
 sub add_memo {
 	my ($to, $from, $message, $mode) = @_;
-	#my $timestr;
-	#$timestr = strftime('%Y-%m-%d %R %Z',localtime);
 
 	# initialize the connection to the database if we need to.
 	connect_to_database() or die("Couldn't open database. Check connection settings.");
 	
+	my ($status, $finalto) = memo_get_greedy_destination($to);
+
 	my $insert_query = $database -> prepare_cached("INSERT INTO " . $database_prefix . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
 		or die DBI->errstr;
-	$insert_query->execute(lc($to), $from, $mode, $message)
+	$insert_query->execute(lc($finalto), $from, $mode, $message)
 		or die DBI->errstr;
 #bookmark
+	return $status;
 }
 
 $commands{'whoswho'} = {
@@ -1076,7 +1088,7 @@ sub cmd_remindme {
 		gummydo($server,$target,"looks like he's overheated. Try again later.");
 		return;
 	}
-	
+
 	my $delivery_time = time+$params[0]*$tick_scalar;
 	$reminder{delivery_time}=$delivery_time;
 	$reminder{message}=$params[2];
