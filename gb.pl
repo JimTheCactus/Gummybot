@@ -1050,6 +1050,9 @@ sub cmd_memo {
 	else {
 		# Check to see if we've heard from the target in the last week so we
 		# can warn about probable nick errors.
+		if ($status == 1) {
+			$who = substr($who,1);
+		}
 		my $lcwho = lc($who);
 		foreach my $channelname (keys %activity) {
 			# Check to see if we've heard on that pony in this channel.
@@ -1074,13 +1077,20 @@ sub cmd_memo {
 # a group, and 1 for explicitly direct groups.
 sub memo_get_greedy_destination {
 	my ($to) = @_;	
+	print "Getting destination for $to";
 
 	# if they call don't call out out a direct delivery
 	if (substr($to,0,1) ne "-") {
-		return get_nickgroup_from_nick($to)
+		my $target = get_nickgroup_from_nick($to,1);
+		if ($target) {
+			return (0,$target);
+		}
+		else {
+			return (-1,lc($to));
+		}
 	}
 	else {
-		return (1,substr($to,1));
+		return (1,substr(lc($to),1));
 	}
 }
 
@@ -1091,15 +1101,13 @@ sub add_memo {
 
 	# initialize the connection to the database if we need to.
 	connect_to_database() or die("Couldn't open database. Check connection settings.");
-	
 	my ($status, $finalto) = memo_get_greedy_destination($to);
-
 	my $insert_query = $database -> prepare_cached("INSERT INTO " . $database_prefix . "memos (Nick, SourceNick, DeliveryMode, CreatedTime, Message) VALUES (?,?,?,NOW(),?)")
 		or die DBI->errstr;
-	$insert_query->execute(lc($finalto), $from, $mode, $message)
+	$insert_query->execute($finalto, $from, $mode, $message)
 		or die DBI->errstr;
+	return $status
 #bookmark
-	return $status;
 }
 
 $commands{'whoswho'} = {
