@@ -715,7 +715,7 @@ sub cmd_nom {
 		$nomnick = $nick;
 	} 
 	else {
-		if (lc($args) eq "gummybot" || lc($args) eq "gummy") {
+		if (lc($args) eq lc($server->{nick}) || lc($args) eq "gummy") {
 			if (defined $nomnick) {
 				gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
