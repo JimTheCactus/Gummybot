@@ -4,6 +4,7 @@ use POSIX;
 use Irssi;
 use Storable;
 use File::Spec;
+use File::Find;
 use Config::Tiny;
 use List::MoreUtils qw(uniq any);
 use POSIX qw/strftime/;
@@ -456,29 +457,41 @@ sub loadmanualaliases {
 	return $count;
 }
 
+my $ponylist;  #Config::Tiny. Holds the list of ponies and their database mappings.
+sub readponyfile {
+	# Skip if it's a directory
+	return if -d $File::Find::name;
+	
+	my $thisfile = Config::Tiny->read($File::Find::name);
+	if (!defined $thisfile) {
+		print ("Failed to load pony file '" . $File::Find::name . "'. Skipping.");
+		return;
+	}
+
+	# Merge the file to the overall list.
+	# (Yes, I'm merging a set of blessed hashes. PERL is weird, but helpful for once.)
+	%$ponylist = (%$ponylist, %$thisfile);
+}
+
 sub loadsubstitutions {
 	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
 	# Basically it prebuilds the substitution list.
 
 	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
-	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
+	#my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.	
 
-	
+	#clear the substitution cache.
+	%funsubs = ();
+
+	#Initialize the pony list
 	$ponylist = Config::Tiny->new();
-	$sublist = Config::Tiny->new();
+	#and grab the ponies from the config file.
+	find(\&readponyfile, getdir('gummyfun/subs/ponies.d'));
 
-	$ponylist = Config::Tiny->read(getdir('gummyfun/ponies'));
-	if (!defined $ponylist) {
-		my $errtxt = Config::Tiny->errstr();
-		print("Failed to load ponylist: $errtxt");
-		return 0;
-	}
-	else {
-		my $count  = scalar keys %$ponylist;
-		print("Loaded $count ponies.");
-	}
+	my $count  = scalar keys %$ponylist;
+	print("Loaded $count ponies.");
 
-	$sublist = Config::Tiny->read(getdir('gummyfun/substitutions'));
+	$sublist = Config::Tiny->read(getdir('gummyfun/subs/classes'));
 	if (!defined $sublist) {
 		my $errtxt = Config::Tiny->errstr();
 		print("Failed to load sublist: $errtxt");
