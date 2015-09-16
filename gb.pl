@@ -34,6 +34,7 @@ my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
 my %funstuff; # Holds the various replacement data
 my %funsubs; # Holds the processed hash of replacement data
+my $funsublookup; # Holds the precompiled regex for replacements
 my $timerhandle; # Holds the handle to the maintenance event timer.
 my $lastblink; # Keeps track of the last time we blinked
 my $lastmsg; # Keeps track of the last time we saw traffic
@@ -532,6 +533,10 @@ sub loadsubstitutions {
 		my @options = keys %ponies;
 		$funsubs{lc($funsub)} = \@options;
 	}
+	
+	my $orlist = "(" . join("|",map{quotemeta("%$_")} keys %funsubs) . ")";
+	$funsublookup = qr/$orlist/i;
+	
 	return scalar keys %$sublist;
 }
 
@@ -565,17 +570,13 @@ sub dofunsubs {
 
 	$text =~ s/%wut/%weird%living/g; # special handling for the compound %wut
 
-	foreach my $funsub (keys %funsubs) {
-		my $searchtext = quotemeta ("%". $funsub);
-		while ($text =~ /$searchtext/i && $count < 100) {
-			my $precursor = $`;
-			my $postcursor = $';
-			my $arref = $funsubs{lc($funsub)};
-			my @choices = @$arref;
-			$text = $` . @choices[rand(scalar @choices)] . $';
-			$count = $count + 1;
-		}
+	while ($text =~ $funsublookup && $count < 100) {
+		my $arref = $funsubs{lc(substr($1,1))};
+		my @choices = @$arref;
+		$text = $` . @choices[rand(scalar @choices)] . $';
+		$count = $count + 1;
 	}
+
 	if ($server->ischannel($channame)) {
 		my $channel = $server->channel_find($channame);
 		my @nicks;
