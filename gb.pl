@@ -491,7 +491,7 @@ sub loadsubstitutions {
 	my $count  = scalar keys %$ponylist;
 	print("Loaded $count ponies.");
 
-	$sublist = Config::Tiny->read(getdir('gummyfun/subs/classes'));
+	$sublist = Config::Tiny->read(getdir('gummyfun/subs/classes.ini'));
 	if (!defined $sublist) {
 		my $errtxt = Config::Tiny->errstr();
 		print("Failed to load sublist: $errtxt");
