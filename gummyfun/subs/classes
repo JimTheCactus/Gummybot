@@ -83,6 +83,9 @@ line=object,!rp
 [OC]
 line=oc
 
+[Obscure]
+file=obscure.txt
+
 [Pegasus]
 line=pegasus,!foal
 

@@ -4,6 +4,7 @@ use POSIX;
 use Irssi;
 use Storable;
 use File::Spec;
+use File::Find;
 use Config::Tiny;
 use List::MoreUtils qw(uniq any);
 use POSIX qw/strftime/;
@@ -34,6 +35,7 @@ my %floodtimes; # Holds the various flood timers
 my $gummyenabled=0; # Keeps track of whether the bot is enabled or not.
 my %funstuff; # Holds the various replacement data
 my %funsubs; # Holds the processed hash of replacement data
+my $funsublookup; # Holds the precompiled regex for replacements
 my $timerhandle; # Holds the handle to the maintenance event timer.
 my $lastblink; # Keeps track of the last time we blinked
 my $lastmsg; # Keeps track of the last time we saw traffic
@@ -455,29 +457,41 @@ sub loadmanualaliases {
 	return $count;
 }
 
+my $ponylist;  #Config::Tiny. Holds the list of ponies and their database mappings.
+sub readponyfile {
+	# Skip if it's a directory
+	return if -d $File::Find::name;
+	
+	my $thisfile = Config::Tiny->read($File::Find::name);
+	if (!defined $thisfile) {
+		print ("Failed to load pony file '" . $File::Find::name . "'. Skipping.");
+		return;
+	}
+
+	# Merge the file to the overall list.
+	# (Yes, I'm merging a set of blessed hashes. PERL is weird, but helpful for once.)
+	%$ponylist = (%$ponylist, %$thisfile);
+}
+
 sub loadsubstitutions {
 	# Access optimizer. This trades memory for speed (and makes our code WAY easier)
 	# Basically it prebuilds the substitution list.
 
 	my $sublist; #Config::Tiny. Holds the list of substitutions allowed.
-	my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.
+	#my $ponylist; #Config::Tiny. Holds the list of ponies and their database mappings.	
 
-	
+	#clear the substitution cache.
+	%funsubs = ();
+
+	#Initialize the pony list
 	$ponylist = Config::Tiny->new();
-	$sublist = Config::Tiny->new();
+	#and grab the ponies from the config file.
+	find(\&readponyfile, getdir('gummyfun/subs/ponies.d'));
 
-	$ponylist = Config::Tiny->read(getdir('gummyfun/ponies'));
-	if (!defined $ponylist) {
-		my $errtxt = Config::Tiny->errstr();
-		print("Failed to load ponylist: $errtxt");
-		return 0;
-	}
-	else {
-		my $count  = scalar keys %$ponylist;
-		print("Loaded $count ponies.");
-	}
+	my $count  = scalar keys %$ponylist;
+	print("Loaded $count ponies.");
 
-	$sublist = Config::Tiny->read(getdir('gummyfun/substitutions'));
+	$sublist = Config::Tiny->read(getdir('gummyfun/subs/classes'));
 	if (!defined $sublist) {
 		my $errtxt = Config::Tiny->errstr();
 		print("Failed to load sublist: $errtxt");
@@ -497,41 +511,78 @@ sub loadsubstitutions {
 
 	# Now forward map the list of ponies. Memory intensive, but much faster.
 	foreach my $funsub (keys %$sublist) {
-		my %ponies = ();
+		#initialize the options for this substitution
+		my @options = ();
 
-		my $ponyclasses = $$sublist{$funsub}{'line'};
-		my @classlist = split(/\s*,\s*/,$ponyclasses);
-		my $first = 1;
-		foreach my $class (@classlist) {
-			$class = lc($class);
-			if ($class !~ /!/) {
-				if ($first) {
-					map {$ponies{$_} = 1} keys %{$poniesbyclass{$class}};
-					$first=undef;
-				}
-				else {
-					foreach my $pony (keys %ponies) {
-						if (!exists $poniesbyclass{$class}->{$pony}) {
-							delete $ponies{$pony};
+		# If they want to load in ponies by class list.
+		if (defined $$sublist{$funsub}{'line'}) {
+			my %ponies = ();
+			my $ponyclasses = $$sublist{$funsub}{'line'};
+			my @classlist = split(/\s*,\s*/,$ponyclasses);
+			my $first = 1;
+			foreach my $class (@classlist) {
+				$class = lc($class);
+				if ($class !~ /!/) {
+					if ($first) {
+						map {$ponies{$_} = 1} keys %{$poniesbyclass{$class}};
+						$first=undef;
+					}
+					else {
+						foreach my $pony (keys %ponies) {
+							if (!exists $poniesbyclass{$class}->{$pony}) {
+								delete $ponies{$pony};
+							}
 						}
 					}
 				}
 			}
+	
+			# If we still haven't included anyone, include everyone.
+			if ($first) {
+				map {$ponies{$_} = 1} keys %$ponylist;
+			}
+
+			# and then scrub out anyone who's supposed to be excluded.
+			foreach my $class (@classlist) {
+				$class = lc($class);
+				if ($class =~ /!/) {
+					$class =~ s/!//;
+					map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
+				}
+			}
+			my @options = keys %ponies;
 		}
-		# If we still haven't included anyone, include everyone.
-		if ($first) {
-			map {$ponies{$_} = 1} keys %$ponylist;
-		}
-		foreach my $class (@classlist) {
-			$class = lc($class);
-			if ($class =~ /!/) {
-				$class =~ s/!//;
-				map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
+
+		# If they've called for a file
+		if (defined $$sublist{$funsub}{'file'}) {
+			my $pathname = $$sublist{$funsub}{'file'};
+			#safety check. Scrub any path information out; we just want filenames.
+			my ($volume, $path, $filename) = File::Spec->splitpath($pathname,0);
+			$filename = getdir(File::Spec->join('gummyfun/subs/',$filename));
+			print "Loading '$filename' into class '$funsub'...";
+			if (open(my $classfile, "<", $filename)) {
+				while (<$classfile>) {
+					my $line = $_;
+					chomp($line);
+					$line =~ s/^\s+|\s+$//g;
+					if ($line) {
+						@options=(@options,$line);
+					}
+					
+				}
+				close($classfile);
+			} else {
+				print "Failed to load! Skipping.";
 			}
 		}
-		my @options = keys %ponies;
+
+		#Write the options to the hash.
 		$funsubs{lc($funsub)} = \@options;
 	}
+	
+	my $orlist = "(" . join("|",map{quotemeta("%$_")} keys %funsubs) . ")";
+	$funsublookup = qr/$orlist/i;
+	
 	return scalar keys %$sublist;
 }
 
@@ -565,17 +616,13 @@ sub dofunsubs {
 
 	$text =~ s/%wut/%weird%living/g; # special handling for the compound %wut
 
-	foreach my $funsub (keys %funsubs) {
-		my $searchtext = quotemeta ("%". $funsub);
-		while ($text =~ /$searchtext/i && $count < 100) {
-			my $precursor = $`;
-			my $postcursor = $';
-			my $arref = $funsubs{lc($funsub)};
-			my @choices = @$arref;
-			$text = $` . @choices[rand(scalar @choices)] . $';
-			$count = $count + 1;
-		}
+	while ($text =~ $funsublookup && $count < 100) {
+		my $arref = $funsubs{lc(substr($1,1))};
+		my @choices = @$arref;
+		$text = $` . @choices[rand(scalar @choices)] . $';
+		$count = $count + 1;
 	}
+
 	if ($server->ischannel($channame)) {
 		my $channel = $server->channel_find($channame);
 		my @nicks;
@@ -715,7 +762,7 @@ sub cmd_nom {
 		$nomnick = $nick;
 	} 
 	else {
-		if (lc($args) eq "gummybot" || lc($args) eq "gummy") {
+		if (lc($args) eq lc($server->{nick}) || lc($args) eq "gummy") {
 			if (defined $nomnick) {
 				gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
@@ -1440,9 +1487,9 @@ sub cmd_help {
 			if (exists $commands{$cmd}->{short_help}) {
 				$msg = $msg . " $commands{$cmd}->{short_help}";
 			}			
-			gummysay($server,$target, $msg);
+			gummydo($server,$target, $msg);
 			if (exists $commands{$cmd}->{help}) {
-				gummysay($server,$target, $commands{$cmd}->{help});
+				gummydo($server,$target, $commands{$cmd}->{help});
 			}
 		}
 		else {
@@ -1450,16 +1497,28 @@ sub cmd_help {
 		}
 	}
 	else {
-		gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+		gummydo($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
 		my @commands;
+		my $count=0;
 		foreach my $cmd (keys %commands) {
 			my $msg = "$cmd";
 			if (exists $commands{$cmd}->{short_help}) {
 				$msg = $msg . " $commands{$cmd}->{short_help}";
 			}
+			# If we're at risk of wrapping
+			if ($count >= 400) {
+				# dump out the list and reset.
+				gummydo($server,$target,"Commands: " . join(",",@commands));
+				@commands=();
+				$count = 0;
+			}
 			push @commands, $msg;
+			$count = $count + length($msg);
 		}
-		gummysay($server,$target,"Commands: " . join(",",@commands));
+		# if we've got anything to say, write it out.
+		if ($count > 0) {		
+			gummydo($server,$target,"Commands: " . join(",",@commands));
+		}
 	}
 }
 
