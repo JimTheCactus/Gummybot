@@ -1440,9 +1440,9 @@ sub cmd_help {
 			if (exists $commands{$cmd}->{short_help}) {
 				$msg = $msg . " $commands{$cmd}->{short_help}";
 			}			
-			gummysay($server,$target, $msg);
+			gummydo($server,$target, $msg);
 			if (exists $commands{$cmd}->{help}) {
-				gummysay($server,$target, $commands{$cmd}->{help});
+				gummydo($server,$target, $commands{$cmd}->{help});
 			}
 		}
 		else {
@@ -1450,16 +1450,28 @@ sub cmd_help {
 		}
 	}
 	else {
-		gummysay($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+		gummydo($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
 		my @commands;
+		my $count=0;
 		foreach my $cmd (keys %commands) {
 			my $msg = "$cmd";
 			if (exists $commands{$cmd}->{short_help}) {
 				$msg = $msg . " $commands{$cmd}->{short_help}";
 			}
+			# If we're at risk of wrapping
+			if ($count >= 400) {
+				# dump out the list and reset.
+				gummydo($server,$target,"Commands: " . join(",",@commands));
+				@commands=();
+				$count = 0;
+			}
 			push @commands, $msg;
+			$count = $count + length($msg);
 		}
-		gummysay($server,$target,"Commands: " . join(",",@commands));
+		# if we've got anything to say, write it out.
+		if ($count > 0) {		
+			gummydo($server,$target,"Commands: " . join(",",@commands));
+		}
 	}
 }
 
