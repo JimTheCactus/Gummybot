@@ -511,39 +511,72 @@ sub loadsubstitutions {
 
 	# Now forward map the list of ponies. Memory intensive, but much faster.
 	foreach my $funsub (keys %$sublist) {
-		my %ponies = ();
+		#initialize the options for this substitution
+		my @options = ();
 
-		my $ponyclasses = $$sublist{$funsub}{'line'};
-		my @classlist = split(/\s*,\s*/,$ponyclasses);
-		my $first = 1;
-		foreach my $class (@classlist) {
-			$class = lc($class);
-			if ($class !~ /!/) {
-				if ($first) {
-					map {$ponies{$_} = 1} keys %{$poniesbyclass{$class}};
-					$first=undef;
-				}
-				else {
-					foreach my $pony (keys %ponies) {
-						if (!exists $poniesbyclass{$class}->{$pony}) {
-							delete $ponies{$pony};
+		# If they want to load in ponies by class list.
+		if (defined $$sublist{$funsub}{'line'}) {
+			my %ponies = ();
+			my $ponyclasses = $$sublist{$funsub}{'line'};
+			my @classlist = split(/\s*,\s*/,$ponyclasses);
+			my $first = 1;
+			foreach my $class (@classlist) {
+				$class = lc($class);
+				if ($class !~ /!/) {
+					if ($first) {
+						map {$ponies{$_} = 1} keys %{$poniesbyclass{$class}};
+						$first=undef;
+					}
+					else {
+						foreach my $pony (keys %ponies) {
+							if (!exists $poniesbyclass{$class}->{$pony}) {
+								delete $ponies{$pony};
+							}
 						}
 					}
 				}
 			}
+	
+			# If we still haven't included anyone, include everyone.
+			if ($first) {
+				map {$ponies{$_} = 1} keys %$ponylist;
+			}
+
+			# and then scrub out anyone who's supposed to be excluded.
+			foreach my $class (@classlist) {
+				$class = lc($class);
+				if ($class =~ /!/) {
+					$class =~ s/!//;
+					map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
+				}
+			}
+			my @options = keys %ponies;
 		}
-		# If we still haven't included anyone, include everyone.
-		if ($first) {
-			map {$ponies{$_} = 1} keys %$ponylist;
-		}
-		foreach my $class (@classlist) {
-			$class = lc($class);
-			if ($class =~ /!/) {
-				$class =~ s/!//;
-				map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
+
+		# If they've called for a file
+		if (defined $$sublist{$funsub}{'file'}) {
+			my $pathname = $$sublist{$funsub}{'file'};
+			#safety check. Scrub any path information out; we just want filenames.
+			my ($volume, $path, $filename) = File::Spec->splitpath($pathname,0);
+			$filename = getdir(File::Spec->join('gummyfun/subs/',$filename));
+			print "Loading '$filename' into class '$funsub'...";
+			if (open(my $classfile, "<", $filename)) {
+				while (<$classfile>) {
+					my $line = $_;
+					chomp($line);
+					$line =~ s/^\s+|\s+$//g;
+					if ($line) {
+						@options=(@options,$line);
+					}
+					
+				}
+				close($classfile);
+			} else {
+				print "Failed to load! Skipping.";
 			}
 		}
-		my @options = keys %ponies;
+
+		#Write the options to the hash.
 		$funsubs{lc($funsub)} = \@options;
 	}
 	
