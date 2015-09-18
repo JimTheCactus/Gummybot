@@ -419,8 +419,12 @@ sub loadfunfile {
 		return 0;
 	}
 
-	open FUNFILE, $filename;
-	while (<FUNFILE>) {
+	my $funfile;
+	unless (open $funfile,"<", $filename) {
+		print "Failed to open $type";
+	}
+
+	while (<$funfile>) {
 		my $line = $_;
 		chomp($line);
 		$line =~ s/^\s+|\s+$//g;
@@ -429,7 +433,7 @@ sub loadfunfile {
 			$count++;
 		}
 	}
-	close FUNFILE;
+	close($funfile);
 	$funstuff{$type}=\@lines;
 	return $count;
 }
@@ -441,9 +445,14 @@ sub loadmanualaliases {
 		print "Manual aliases file not found. Ignoring...";
 		return 0;
 	}
+
+	my $aliasfile;
 	# Load manual aliases
-	open ALIASFILE, $filename;
-	while (<ALIASFILE>) {
+	unless (open $aliasfile,"<", $filename) {
+		print "Failed to open aliases";
+	}
+
+	while (<$aliasfile>) {
 		chomp;
 		my @nicks = split(/\s+/);
 		foreach (@nicks) {
@@ -451,7 +460,7 @@ sub loadmanualaliases {
 			$count++;
 		}
 	}
-	close ALIASFILE;
+	close $aliasfile;
 	return $count;
 }
 
