@@ -421,12 +421,8 @@ sub loadfunfile {
 		return 0;
 	}
 
-	my $funfile;
-	unless (open $funfile,"<", $filename) {
-		print "Failed to open $type";
-	}
-
-	while (<$funfile>) {
+	open FUNFILE, $filename;
+	while (<FUNFILE>) {
 		my $line = $_;
 		chomp($line);
 		$line =~ s/^\s+|\s+$//g;
@@ -435,7 +431,7 @@ sub loadfunfile {
 			$count++;
 		}
 	}
-	close($funfile);
+	close FUNFILE;
 	$funstuff{$type}=\@lines;
 	return $count;
 }
@@ -447,14 +443,9 @@ sub loadmanualaliases {
 		print "Manual aliases file not found. Ignoring...";
 		return 0;
 	}
-
-	my $aliasfile;
 	# Load manual aliases
-	unless (open $aliasfile,"<", $filename) {
-		print "Failed to open aliases";
-	}
-
-	while (<$aliasfile>) {
+	open ALIASFILE, $filename;
+	while (<ALIASFILE>) {
 		chomp;
 		my @nicks = split(/\s+/);
 		foreach (@nicks) {
@@ -462,7 +453,7 @@ sub loadmanualaliases {
 			$count++;
 		}
 	}
-	close $aliasfile;
+	close ALIASFILE;
 	return $count;
 }
 
@@ -1058,7 +1049,8 @@ sub cmd_autogreet {
 		else {
 			$greets{$greetnick} = $args;
 			write_datastore();
-			gummydo($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved!");
+			gummydo($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved! Next time you change nick it will say:");
+			do_greet($server, $target, $nick, $nick, 1);
 		}
 	}
 	else {
