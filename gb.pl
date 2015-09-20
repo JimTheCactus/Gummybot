@@ -550,7 +550,7 @@ sub loadsubstitutions {
 					map {delete $ponies{$_}} keys %{$poniesbyclass{$class}};
 				}
 			}
-			my @options = keys %ponies;
+			@options = keys %ponies;
 		}
 
 		# If they've called for a file
