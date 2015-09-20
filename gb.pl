@@ -1801,8 +1801,8 @@ sub add_alias {
 # do_greet(server, target channel, nick, displayed nick)
 # Issues an autogreet (if appropriate) for nick. Shows the value of the displayed nick (useful for the two nick change modes)
 sub do_greet {
-	my ($server, $target, $nick, $dispnick) = @_;
-	if (flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
+	my ($server, $target, $nick, $dispnick, $force) = @_;
+	if ($force || flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
 		my $greetnick;
 		$greetnick=lc($nick);
 		if (exists $greets{$greetnick}) {
