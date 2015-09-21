@@ -580,9 +580,9 @@ sub loadsubstitutions {
 		$funsubs{lc($funsub)} = \@options;
 	}
 	
-	my $orlist = "(" . join("|",map{quotemeta("%$_")} keys %funsubs) . ")";
+	my $orlist = "\%(" . join("|",map{quotemeta("$_")} keys %funsubs) . ")";
 	$funsublookup = qr/$orlist/i;
-	
+
 	return scalar keys %$sublist;
 }
 
@@ -617,7 +617,7 @@ sub dofunsubs {
 	$text =~ s/%wut/%weird%living/g; # special handling for the compound %wut
 
 	while ($text =~ $funsublookup && $count < 100) {
-		my $arref = $funsubs{lc(substr($1,1))};
+		my $arref = $funsubs{$1};
 		my @choices = @$arref;
 		$text = $` . @choices[rand(scalar @choices)] . $';
 		$count = $count + 1;
@@ -762,6 +762,9 @@ sub cmd_nom {
 		$nomnick = $nick;
 	} 
 	else {
+		# sub out the fun stuff so that the behavior is static.
+		$args = dofunsubs($server, $target, $args);
+
 		if (lc($args) eq lc($server->{nick}) || lc($args) eq "gummy") {
 			if (defined $nomnick) {
 				gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
@@ -1007,6 +1010,9 @@ sub cmd_om {
 	}
 	elsif (lc($params[0]) eq "add") {
 		if (flood("file","omadd",Irssi::settings_get_time('Gummy_OmAddFloodLimit')/1000)) {
+			# sub out the fun stuff so that the behavior is static.
+			$args = dofunsubs($server, $target, $args);
+
 			open OMADD, ">> ".getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
 			print OMADD "${nick}\@${target}: $args\n";
 			close OMADD;
@@ -1077,6 +1083,9 @@ sub cmd_memo {
 		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
 		return;
 	}
+
+	# sub out the fun stuff
+	$args = dofunsubs($server, $target, $args);
 
 	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
 		gummydo($server,$target,"looks like he's overheated. Try again later.");
@@ -1222,7 +1231,7 @@ sub cmd_remindme {
 
 	my $delivery_time = time+$params[0]*$tick_scalar;
 	$reminder{delivery_time}=$delivery_time;
-	$reminder{message}=$params[2];
+	$reminder{message}= dofunsubs($server, $target, $params[2]);
 	$reminder{nick}=$nick;
 	$reminder{tracked_nick} = $nick;
 	$reminder{channel}=$target;
@@ -1924,8 +1933,6 @@ sub event_privmsg {
 					# nor is gummy himself
 					if ($target eq $nick || nickflood($target,Irssi::settings_get_time('Gummy_ChanFloodLimit')/1000)) {
 						logtext("$nick PRIVMSG $data");
-						# sub out the fun stuff
-						$args = dofunsubs($server, $target, $args);
 						# and run the command (if appropriate)
 						if (!parse_command($server, $curwind, $target, $nick, $cmd, $args)) {
 							gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
