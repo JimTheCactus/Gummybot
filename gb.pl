@@ -1066,8 +1066,8 @@ sub cmd_autogreet {
 
 $commands{'memo'} = {
 		cmd => \&cmd_memo,
-		short_help => "<target> <text>",
-		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM. Prefixing the nickname with a - will sent it to the nicks group if they're part of one."
+		short_help => "[!] <target> <text>",
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM. Prefixing the nickname with a - will sent it to the nicks group if they're part of one. If ! is included, deliver on login and nick change too."
 	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -1084,6 +1084,12 @@ sub cmd_memo {
 		return;
 	}
 
+	my $aggr = 0;
+	if (lc($who) eq "!") {
+		$aggr = 1;
+		($who, $args) = split(/\s+/,$args,2);
+	}
+
 	# sub out the fun stuff
 	$args = dofunsubs($server, $target, $args);
 
@@ -1094,7 +1100,15 @@ sub cmd_memo {
 
 	my $mode = undef;
 	if (lc($nick) eq lc($target)) {
-		$mode = "PRIV";
+		if ($aggr) {
+			$mode = "PAGR";
+		}
+		else {
+			$mode = "PRIV";
+		}
+	}
+	elsif ($aggr) {
+		$mode = "AGGR";
 	}
 
 	# Send the memo.
@@ -1601,7 +1615,7 @@ sub is_user_in_channel {
 # deliver_memos(server, target channel, nick)
 # delivers any stored memos for nick to the target channel
 sub deliver_memos {
-	my ($server, $target, $nick) = @_;
+	my ($server, $target, $nick, $aggr_state) = @_;
 	if (Irssi::settings_get_bool('Gummy_AllowMemo')) {
 		# Connect to the database if we haven't already.
 		connect_to_database() or die("Couldn't open database. Check connection settings.");
@@ -1629,7 +1643,7 @@ sub deliver_memos {
 			my ($id, $destination, $source, $delivery, $created, $message) = @memo;
 
 			my $memo_target = $target;
-			if ($delivery eq "PRIV") {
+			if ($delivery eq "PRIV" || $delivery eq "PAGR") {
 				$memo_target = $nick;
 			} elsif ($delivery eq "GCOM") {
 				$memo_target = $nick;
@@ -1638,6 +1652,17 @@ sub deliver_memos {
 			if (!$printed_header) {
 				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
 				$printed_header = 1;
+			}
+
+			print "Delivery: $delivery. aggr_state: $aggr_state";
+			print ($delivery ne "PAGR");
+			print ($delivery ne "AGGR");
+			print (!$aggr_state);
+
+			if (($delivery ne "PAGR" && $delivery ne "AGGR") && $aggr_state) {
+				# If this is not an aggressive memo and we're not doing a normal response
+				# skip it and move on to the next one.
+				next;
 			}
 
 			gummydo($server, $memo_target, "[$created] $source: $message");			
@@ -2037,6 +2062,7 @@ sub event_nick_join {
 				}
 			}
 		}
+		deliver_memos($server, $channame, $nick, 1);
 	};
 	if ($@) {
 		logtext("ERROR","event_nick_join",$@);
@@ -2072,6 +2098,7 @@ sub event_nick_change {
 				$reminder->{tracked_nick} = $nick->{nick};
 			}
 		}
+		deliver_memos($channel->{server}, $channel->{name}, $nick, 1);
 	};
 	if ($@) {
 		logtext("ERROR","event_nick_change",$@);
