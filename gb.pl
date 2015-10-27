@@ -1649,20 +1649,15 @@ sub deliver_memos {
 				$memo_target = $nick;
 			}
 
-			if (!$printed_header) {
-				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
-				$printed_header = 1;
-			}
-
-			print "Delivery: $delivery. aggr_state: $aggr_state";
-			print ($delivery ne "PAGR");
-			print ($delivery ne "AGGR");
-			print (!$aggr_state);
-
 			if (($delivery ne "PAGR" && $delivery ne "AGGR") && $aggr_state) {
 				# If this is not an aggressive memo and we're not doing a normal response
 				# skip it and move on to the next one.
 				next;
+			}
+
+			if (!$printed_header) {
+				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
+				$printed_header = 1;
 			}
 
 			gummydo($server, $memo_target, "[$created] $source: $message");			
