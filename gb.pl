@@ -646,6 +646,10 @@ sub dofunsubs {
 			$mynum=rand(scalar(@nicks));
 		};
 	}
+
+	# After all of the substitutions are done, swap in the a/ans
+	$text =~ s/%an([\s]+[aeiou])/an$1/ig;
+	$text =~ s/%an([\s]+[^aeiou])/a$1/ig;
 	if ($count == 100) {
 		print "BAILED!";
 	}
