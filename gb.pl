@@ -94,6 +94,9 @@ Irssi::settings_add_time('GummyBot','Gummy_ChanFloodLimit','3s'); # Sets the min
 Irssi::settings_add_time('GummyBot','Gummy_OmAddFloodLimit','1m'); # Sets the rate at which OM suggestions can be submitted.
 Irssi::settings_add_bool('GummyBot','Gummy_AllowRemote',1); # Enables Gummy's tele-commands 
 Irssi::settings_add_bool('GummyBot','Gummy_Hidden',0); 
+Irssi::settings_add_bool('GummyBot','Gummy_AutogreetRedirect',0); # Changes gummybot's handling of autogreets to forward to another bot
+Irssi::settings_add_str('GummyBot','Gummy_AutogreetRedirectTarget','gummybot|auto'); # Sets where Gummy will forward autogreets
+
 
 #
 # Primary Support Functions
@@ -1835,12 +1838,24 @@ sub add_alias {
 # Issues an autogreet (if appropriate) for nick. Shows the value of the displayed nick (useful for the two nick change modes)
 sub do_greet {
 	my ($server, $target, $nick, $dispnick, $force) = @_;
+	print "DEBUG: Autogreet check";
 	if ($force || flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
+		print "DEBUG: Autogreet not flooded";
 		my $greetnick;
 		$greetnick=lc($nick);
 		if (exists $greets{$greetnick}) {
+			print "DEBUG: Autogreet exists";
 			my $greet = $greets{$greetnick};
-			gummydo($server,$target, "[$dispnick] $greet");
+			# If we've been asked to redirect
+			if (Irssi::settings_get_bool('Gummy_AutogreetRedirect')) {
+				my $fullgreet = dofunsubs($server, $target, $greet);
+				my $cmd_text = "msg " . Irssi::settings_get_str('Gummy_AutogreetRedirectTarget') . " !gbrelay $target [$dispnick] $fullgreet";
+				print "DEBUG: $cmd_text";
+				$server->command($cmd_text);
+			} else {
+				print "DEBUG: Autogreet emitted directly";
+				gummydo($server,$target, "[$dispnick] $greet");
+			}
 		}
 	}
 }
