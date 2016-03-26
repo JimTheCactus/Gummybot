@@ -999,6 +999,26 @@ sub cmd_roll {
 	gummydo($server, $target, $result);
 }
 
+$commands{'choose'} = {
+		cmd=>\&cmd_choose,
+		short_help => "<options>",
+		help => "Causes Gummy to pick one of several space seperated options. Use quotes to "
+	};
+sub cmd_choose {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @choices = ();
+
+	while ($args =~ /("[^"]*"|[^"\s]+)(\s+|$)/g) {
+		my $choice = $1;
+		if (substr($choice,0,1) eq "\"") {
+			$choice = substr($choice,1,length($choice)-2);
+		}
+		push(@choices,$choice);
+	}
+	my $choice_num = int(rand(scalar(@choices)));
+	gummydo($server,$target, "Blinks towards " . $choices[$choice_num]);
+}
+
 $commands{'om'} = {
 		cmd => \&cmd_om,
 		short_help => "[add <text> | nom | skippy]",
