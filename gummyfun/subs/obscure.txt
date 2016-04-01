@@ -1,38 +1,7 @@
-Doctor Whooves Jr.
-Hoofbeat
-Lickety Split
-Strike
-Archer Bodkin
-Aura
-Checkered Flag
-Coronet
-Flash
-Hot Rod
-Lemon Daze
-Lily Dache
-Little Hoof
-Noi
-Peachy Pie
-Pina Colada
-Royal Blue
-Sunny Days
-Alula
-Derpy Jr.
-Cheery
-Cotton Cloudy
-Cyan Skies
-Harpica
-Mango Dash
-Peachy Petal
-Pinkie Feather
-Purpletastic
-Rainy Feather
-Sweet Pop
-Tornado Bolt
-Sun Glimmer
-Tootsie Flute
-Golden Harvest
+Affero
+Al
 Alex
+Alula
 Ambrosia
 Apple Bumpkin
 Apple Cider
@@ -42,235 +11,266 @@ Apple Munchies
 Apple Pie
 Apple Strudely
 Apple Tarty
+Archer Bodkin
+Arnie
+Aura
+Banana Fluff
+Bastion Yorsets
 Bakey Apple
 Bell Perin
 Berry Icicle
 Big Wig
+Black Stone
+Blue Belle
 Blue Bonnet
+Blue October
 Blueberry
+Blueberry Cloud
 Bluenote
+Broken Iris
+Brolly
+Burnt Oak
 Buttercup
+Caboose
+Caesar
 Candy Mane
 Candylicious
+Cappuccino
 Caramel Apple
+Chance-A-Lot
+Checkered Flag
+Cheery
+Cherries Jubilee
 Cherry Berry
+Cherry Cola
+Cherry Strudel
 Chilly Puddle
+Chocolate Blueberry
+Chocolate Sun
+Chocolate Tail
+Cloudkicker
+Cloud Showers
+Clover
+Coconut
+Combover Liverspot
 Constelle
+Cool Star
 Cormana
+Cormano
+Coronet
+Cosmic
+Cotton Cloudy
 Crisps Pink
+Cyan Skies
 Dainty Dove
+Davenport
 Daze-y
+Derpy Jr.
+Diamond Mint
+Dizzy Twister
+Doctor Whooves Jr.
+Dollar
 Doseydotes
+Drizzle
+Eiffel
+Elle Cuisine
 Elsie
+Endless Clouds
 Epona
+Evening Star
 Film Reel
+Fire Streak
+Firecracker Burst
+Firefly
+Flash
+Flash Bulb
 Flat Hat
 Flounder
+Flutter Doo
 Forest Spirit
+Frederic Horseshoepin
+Gergorie Plat
+Geri
 Ginger Gold
 Giselle
+Glory
+Golden Delicious
+Golden Harvest
+Granny
+Green Gem
+Green Grapes
+Harpica
+Harpo
+Hayseed
+Heart Throb
+Herald
+Hercules
+High Winds
+Holly Dash
+Honeysuckle
+Hoofbeat
+Horte Cuisine
+Hot Rod
+Ice Pop
+Ice Wind
+Icy Rain
+Ingrid Marie
 Jangles
+Jazz
 Jenny
+John Bull
+Juicy Fruit
+Kazooie
+Klein
 Lavender Fritter
 Lavenderhoof
+Leeroy Wingkins
+Lemon Daze
+Lemon Hearts
+Lemon Tart
+Lickety Split
+Lightning Bolt
+Lightning Streak
 Lil' Devil
+Lily Dache
+Lincoln
 Link Pink
 Linked Hearts
+Little Hoof
 Little Po
+Lonsdaleite
 Lotus Blossom
+Lucy
 Lyrica
-Majesty
+Majesty, our Dark Queen
+Mango Dash
 Mango Juice
 Marmalade
 Maroon Carrot
 Masquerade
-Midnight Fun
-Millie
-Nurse Tenderheart
-Orange Wafer
-Pacific Rose
-Petunia
-Picture Perfect
-Pink Pearl
-Pish Posh
-Prim Cut
-Purple Haze
-Purple Wave
-Quake
-The Rani
-Red Gala
-Reflective Rock
-Regal Candent
-Romana II
-Roxie
-Ruby Rhubarb
-Sandy
-Serena
-Sharpener
-Shoeshine
-Sindy
-Snappy Scoop
-Soigne Folio
-Spring Water
-Stella
-Storm
-Sue
-Sun Streak
-Sunset Bliss
-Toffee
-Tree Sap
-Vanilla Sweets
-Violina
-Winter Withers
-Yooess Dee
-Al
-Arnie
-Blue October
-Blueberry Cloud
-Brolly
-Cappuccino
-Cherries Jubilee
-Chocolate Blueberry
-Cloudkicker
-Cloud Showers
-Cool Star
-Diamond Mint
-Dizzy Twister
-Dollar
-Drizzle
-Endless Clouds
-Fire Streak
-Firefly
-Flash Bulb
-Flutter Doo
-Granny
-Green Gem
-Heart Throb
-High Winds
-Honeysuckle
-Ice Pop
-Ice Wind
-Icy Rain
-Juicy Fruit
-Leeroy Wingkins
-Lightning Bolt
-Lightning Streak
-Lucy
+Master
+Maxie
+May Ball
+Meadow Song
 Medley
 Merry May
+Midnight Fun
+Millie
+Morton Shaker
+Neon Lights
+Noi
+North Pole
+North Star
+Nurse Tenderheart
+Observan
 Opal Water
 Orange Blossom
 Orange Box
+Orange Wafer
+Orchid Dew
+Orion
+Pacific Rose
+Palmer
 Papermoon
 Parasol
+Peachy Petal
+Peachy Pie
 Peppermint Crunch
+Petunia
+Picture Perfect
+Pina Colada
 Pink Cloud
+Pink Pearl
+Pinkie Feather
+Pish Posh
+Prim Cut
+Primrose
+Promontory
+Ponet
 Pumpkin Tart
+Purple Haze
+Purple Wave
+Purpletastic
 Q. T. Prism
+Quake
 Rainbowshine
 Raindrops
+Rainy Feather
 Rapidfire
+Raty
 Rays
+Red Delicious
+Red Gala
 Red Velvet
+Reflective Rock
+Regal Candent
+Rhythm
 Riverdance
+Romana II
+Roxie
 Roy G. Bow
+Royal Blue
+Ruby Rhubarb
+Salty
+Sandy
 Sassaflash
+Sea Swirl
+Serena
+Shamrock
+Sharpener
+Shoeshine
+Sindy
 Skitsy
 Skyra
+Snappy Scoop
 Snow Catcher
-Stardancer
-Starsong
-Sugar Grape
-Sunburst
-Sunny Delight
-Tornado
-Tracy Flash
-Tropical Storm
-Vanilla Skies
-Vince
-Wind Whistler
-Wing Wishes
-Yo-Yo
-Banana Fluff
-Bastion Yorsets
-Neon Lights
-Blue Belle
-Chocolate Sun
-Chocolate Tail
-Elle Cuisine
-Firecracker Burst
-Glory
-Gergorie Plat
-Holly Dash
-Ingrid Marie
-The Inquisitor
-Jazz
-Vance Vaughn Vendington
-Lemon Hearts
-Lemon Tart
-Lonsdaleite
-Maxie
-May Ball
-North Pole
-North Star
-Orchid Dew
-Primrose
-Ponet
-Raty
-Rhythm
-Sea Swirl
+Soigne Folio
 South Pole
 Sparkler
+Spring Water
 Star Dream
+Stardancer
+Starsong
+Stella
 Strawberry Lime
+Strike
+Storm
 Sugarberry
+Sugar Grape
+Sue
+Sun Glimmer
+Sun Streak
+Sunburst
+Sunny Days
+Sunny Delight
+Sunset Bliss
 Swan Dive
 Sweet Dreams
-Twinkle
-Violet
-Violyre
-Written Script
-Hayseed
-Affero
-Black Stone
-Broken Iris
-Burnt Oak
-Caboose
-Caesar
-Chance-A-Lot
-Cherry Cola
-Cherry Strudel
-Coconut
-Combover Liverspot
-Cormano
-Cosmic
-Davenport
-Eiffel
-Evening Star
-Frederic Horseshoepin
-Geri
-Golden Delicious
-Green Grapes
-Harpo
-Herald
-Hercules
-Horte Cuisine
-John Bull
-Kazooie
-Klein
-Lincoln
-Clover
-Master
-Meadow Song
-Morton Shaker
-Observan
-Orion
-Palmer
-Promontory
-Red Delicious
-Salty
-Shamrock
+Sweet Pop
+The Inquisitor
+The Rani
+Toffee
+Tootsie Flute
+Tornado
+Tornado Bolt
+Tracy Flash
+Tropical Storm
+Tree Sap
 Twilight Sky
-Tux n’ Tails
+Twinkle
+Tux n Tails
+Vance Vaughn Vendington
+Vanilla Skies
+Vanilla Sweets
+Vince
+Violet
+Violina
+Violyre
+Wind Whistler
 Windsor
+Wing Wishes
+Winter Withers
+Written Script
 Yellow Burst
+Yooess Dee
+Yo-Yo
