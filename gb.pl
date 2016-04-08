@@ -70,6 +70,7 @@ Irssi::settings_add_time('GummyBot','Gummy_GreetFloodLimit','10m'); # Sets the m
 # Memos
 Irssi::settings_add_bool('GummyBot','Gummy_AllowMemo',1); # Enables Gummy's memo system.
 Irssi::settings_add_time('GummyBot','Gummy_MemoFloodLimit','2m'); # Sets the minimum time between adding memos.
+Irssi::settings_add_bool('GummyBot','Gummy_MemoDeliveredNotifications', 1); # Enables delivery notifications
 
 #Noms
 Irssi::settings_add_bool('GummyBot','Gummy_JoinNom',1); # Enables Gummy's nomming feature when people join.
@@ -1714,7 +1715,7 @@ sub deliver_memos {
 				}
 
 				# If we haven't delivered the notification some other way, memo the user.
-				if (!$delivered) {
+				if (!$delivered && Irssi::settings_get_bool('Gummy_MemoDeliveredNotifications')) {
 					add_memo($source, "Postmaster Gummy", $delivery_notice, "GCOM");
 				}
 			}
