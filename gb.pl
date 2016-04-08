@@ -642,12 +642,17 @@ sub dofunsubs {
 
 		# if there isn't anyone else, then add us just so the list isn't empty.
 		if (scalar @nicks < 1) {
-			push @nicks, $server->{nick};
+			push @nicks, "Nopony";
 		}
-
 		my $mynum=rand(scalar(@nicks));
-		while ($text =~ s/(^|[^\\])%peep/$1$nicks[$mynum]/) {
+		my $peepnick=splice(@nicks,$mynum,1);
+
+		while ($text =~ s/(^|[^\\])%peep/$1$peepnick/) {
+			if (scalar @nicks < 1) {
+				push @nicks, "Nopony";
+			}
 			$mynum=rand(scalar(@nicks));
+			$peepnick=splice(@nicks,$mynum,1);
 		};
 	}
 
