@@ -147,7 +147,7 @@ sub enablegummy {
 	logtext("Gummy Enabled.");
 	if (lc($_[0]) ne "quiet") {
 		foreach (Irssi::channels()) {
-			gummydo($_->{server},$_->{name},"makes a slight whining noise as his gleaming red eyes spring to life. A robotic voice chirps out, \"Gummybot Version $gummyver Enabled.\" After a few moments, his eyes turn pink and docile, and he blinks innocently at the channel.");
+			gummydoraw($_->{server},$_->{name},"makes a slight whining noise as his gleaming red eyes spring to life. A robotic voice chirps out, \"Gummybot Version $gummyver Enabled.\" After a few moments, his eyes turn pink and docile, and he blinks innocently at the channel.");
 		}
 	}
 }
@@ -757,7 +757,7 @@ $commands{'ver'} = {
 	};
 sub cmd_ver {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummysay($server, $target, "Gummybot is currently version $gummyver.");
+	gummysayraw($server, $target, "Gummybot is currently version $gummyver.");
 }
 
 $commands{'nom'} = {
@@ -771,10 +771,10 @@ sub cmd_nom {
 
 	if (not @params) {
 		if (defined $nomnick) {
-			gummydo($server,$target,"drops off of ${nomnick} and noms onto ${nick}'s tail.");
+			gummydoraw($server,$target,"drops off of ${nomnick} and noms onto ${nick}'s tail.");
 		}
 		else {
-			gummydo($server,$target,"noms onto ${nick}'s tail.");
+			gummydoraw($server,$target,"noms onto ${nick}'s tail.");
 		}
 		$nomnick = $nick;
 	} 
@@ -784,22 +784,22 @@ sub cmd_nom {
 
 		if (lc($args) eq lc($server->{nick}) || lc($args) eq "gummy") {
 			if (defined $nomnick) {
-				gummydo($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
+				gummydoraw($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
 			else {
-				gummydo($server,$target, "at ${nick}'s command the serpent latches on to it's own tail and forms Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
+				gummydoraw($server,$target, "at ${nick}'s command the serpent latches on to it's own tail and forms Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
 			$nomnick = $server->{nick};
 		}
 		elsif (lc($args) eq lc($nomnick) && defined $nomnick) {
-			gummydo($server,$target,"does a quick triple somersault into a half twist and lands perfectly back onto ${nomnick}'s tail.");
+			gummydoraw($server,$target,"does a quick triple somersault into a half twist and lands perfectly back onto ${nomnick}'s tail.");
 		}
 		else {
 			if (defined $nomnick) {
-				gummydo($server,$target, "leaps from $nomnick at ${nick}'s command and noms onto ${args}'s tail.");
+				gummydoraw($server,$target, "leaps from $nomnick at ${nick}'s command and noms onto ${args}'s tail.");
 			}
 			else {
-				gummydo($server,$target, "leaps at ${nick}'s command and noms onto ${args}'s tail.");
+				gummydoraw($server,$target, "leaps at ${nick}'s command and noms onto ${args}'s tail.");
 			}
 			$nomnick = $args;
 		}
@@ -851,7 +851,7 @@ sub cmd_telesay {
 			gummysay($server, $newtarget, $args);
 		}
 		else {
-			gummydo($server, $target, "blinks. He's not in that channel.");
+			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
 }
@@ -876,7 +876,7 @@ sub cmd_teledo {
 			gummydo($server, $newtarget, $args);
 		}
 		else {
-			gummydo($server, $target, "blinks. He's not in that channel.");
+			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
 }
@@ -887,7 +887,7 @@ $commands{'crickets'} = {
 	};
 sub cmd_crickets {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummydo($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
+	gummydoraw($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
 }
 
 $commands{'coolkids'} = {
@@ -904,13 +904,13 @@ sub cmd_coolkids {
 	elsif ($params[0]) {
 		docoolkids($server, $params[0], $nick, $nick);
 		if ($server->ischannel($target)) {
-			gummydo($server, $target, "hands out shades to all of the cool ponies in $params[0].");
+			gummydoraw($server, $target, "hands out shades to all of the cool ponies in $params[0].");
 		}
 	}
 	else {
 		docoolkids($server, $target, $nick, $nick);
 		if ($server->ischannel($target)) {
-			gummydo($server, $target, "hands out shades to all of the cool ponies in the channel.");
+			gummydoraw($server, $target, "hands out shades to all of the cool ponies in the channel.");
 		}
 	}
 }
@@ -930,10 +930,10 @@ sub docoolkids {
 	}
 
 	if ((scalar @peeps) > 0 ) {
-		gummydo($server,$target, "offers sunglasses to " . join(", ", @peeps) . ".");
+		gummydoraw($server,$target, "offers sunglasses to " . join(", ", @peeps) . ".");
 	}
 	else {
-		gummydo($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
+		gummydoraw($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
 	}
 }
 
@@ -945,11 +945,11 @@ $commands{'getitoff'} = {
 sub cmd_getitoff {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (defined $nomnick) {
-		gummydo($server, $target, "drops dejectedly off of ${nomnick}'s tail.");
+		gummydoraw($server, $target, "drops dejectedly off of ${nomnick}'s tail.");
 		$nomnick = undef;
 	}
 	else {
-		gummydo($server, $target, "blinks absently; his already empty maw hanging open slightly.");
+		gummydoraw($server, $target, "blinks absently; his already empty maw hanging open slightly.");
 	}	
 }
 
@@ -959,7 +959,7 @@ $commands{'dance'} = {
 	};
 sub cmd_dance {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummydo($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
+	gummydoraw($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
 }
 
 $commands{'isskynet()'} = {
@@ -968,8 +968,8 @@ $commands{'isskynet()'} = {
 	};
 sub cmd_isskynet {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummysay($server, $target, "89");
-	gummysay($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
+	gummysayraw($server, $target, "89");
+	gummysayraw($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
 }
 
 $commands{'roll'} = {
@@ -981,19 +981,19 @@ sub cmd_roll {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
 	if (!int(@params[1]) || !int(@params[0])) {
-		gummydo($server, $target, "Blinks. How many of what dice? !gb roll <number> <sides>");
+		gummydoraw($server, $target, "Blinks. How many of what dice? !gb roll <number> <sides>");
 		return;
 	}
 	my $rolls = int(@params[0]);
 	my $sides = int(@params[1]);
 
 	if ($rolls > 10 || $rolls < 1) {
-		gummydo($server, $target, "looks around but doesn't find that many dice. He only has 10!");
+		gummydoraw($server, $target, "looks around but doesn't find that many dice. He only has 10!");
 		return;
 	}
 
 	if ($sides < 2 || $sides > 10000) {
-		gummydo($server, $target, "looks around but doesn't find a dice with that many sides. He only has up to 10000!");
+		gummydoraw($server, $target, "looks around but doesn't find a dice with that many sides. He only has up to 10000!");
 		return;
 	}
 
@@ -1006,7 +1006,7 @@ sub cmd_roll {
 		$sum = $sum + $roll;
 	}
 	$result = "$result} = $sum";
-	gummydo($server, $target, $result);
+	gummydoraw($server, $target, $result);
 }
 
 $commands{'choose'} = {
@@ -1017,6 +1017,8 @@ $commands{'choose'} = {
 sub cmd_choose {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @choices = ();
+        # Preparse substitutions to ensure consistency
+        $args = dofunsubs($server, $target, $args);
 
 	while ($args =~ /("[^"]*"|[^"\s]+)(\s+|$)/g) {
 		my $choice = $1;
@@ -1026,7 +1028,7 @@ sub cmd_choose {
 		push(@choices,$choice);
 	}
 	my $choice_num = int(rand(scalar(@choices)));
-	gummydo($server,$target, "Blinks towards " . $choices[$choice_num]);
+	gummydoraw($server,$target, "Blinks towards " . $choices[$choice_num]);
 }
 
 $commands{'om'} = {
@@ -1043,7 +1045,7 @@ sub cmd_om {
 		}
 		my @omcache =@{$funstuff{buddha}};
 		my $buddha = $omcache[rand(@omcache)];
-		gummysay($server, $target, "Gummybuddha says: $buddha");
+		gummysayraw($server, $target, "Gummybuddha says: $buddha");
 	}
 	elsif (lc($params[0]) eq "add") {
 		if (flood("file","omadd",Irssi::settings_get_time('Gummy_OmAddFloodLimit')/1000)) {
@@ -1053,14 +1055,14 @@ sub cmd_om {
 			open OMADD, ">> ".getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
 			print OMADD "${nick}\@${target}: $args\n";
 			close OMADD;
-			gummysay($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
+			gummysayraw($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
 		}
 		else {
-			gummysay($server,$target,"Please wait longer before submitting another suggestion. No more than once a minute please.");
+			gummysayraw($server,$target,"Please wait longer before submitting another suggestion. No more than once a minute please.");
 		}
 	}
 	elsif (lc($params[0]) eq "nom") {
-		gummydo($server,$target,"meditates on the wisdom of the nom.");
+		gummydoraw($server,$target,"meditates on the wisdom of the nom.");
 	}
 	elsif (lc($params[0]) eq "skippy") {
 		if (not %funstuff) {
@@ -1068,10 +1070,10 @@ sub cmd_om {
 		}
 		my @omcache =@{$funstuff{skippy}};
 		my $skippy = $omcache[rand(@omcache)];
-		gummysay($server, $target, "The wise Skippy said: $skippy");
+		gummysayraw($server, $target, "The wise Skippy said: $skippy");
 	}
 	else {
-		gummydo($server,$target,"blinks at you in confusion. Did you mean to nom?");
+		gummydoraw($server,$target,"blinks at you in confusion. Did you mean to nom?");
 	}
 }
 
@@ -1087,17 +1089,17 @@ sub cmd_autogreet {
 		if ($args eq "") {
 			delete $greets{$greetnick};
 			write_datastore();
-			gummydo($server,$target, "strikes your greeting from his databanks.");
+			gummydoraw($server,$target, "strikes your greeting from his databanks.");
 		}
 		else {
 			$greets{$greetnick} = $args;
 			write_datastore();
-			gummydo($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved! Next time you change nick it will say:");
+			gummydoraw($server,$target, "pauses briefly as the HDD light blinks in his eyes. Saved! Next time you change nick it will say:");
 			do_greet($server, $target, $nick, $nick, 1);
 		}
 	}
 	else {
-		gummydo($server,$target,"ignores you as autogreets have been disabled.");
+		gummydoraw($server,$target,"ignores you as autogreets have been disabled.");
 	}
 }
 
@@ -1109,7 +1111,7 @@ $commands{'memo'} = {
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (!Irssi::settings_get_bool('Gummy_AllowMemo')) {
-		gummydo($server,$target,"ignores you as memos have been disabled.");
+		gummydoraw($server,$target,"ignores you as memos have been disabled.");
 		return;
 	}
 
@@ -1117,7 +1119,7 @@ sub cmd_memo {
 	($who, $args) = split(/\s+/,$args,2);
 
 	if ($args eq "" || $who eq "") {
-		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
+		gummydoraw($server, $target, "looks at you with a confused look. You might consider !gb help memo.");	
 		return;
 	}
 
@@ -1131,7 +1133,7 @@ sub cmd_memo {
 	$args = dofunsubs($server, $target, $args);
 
 	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-		gummydo($server,$target,"looks like he's overheated. Try again later.");
+		gummydoraw($server,$target,"looks like he's overheated. Try again later.");
 		return;
 	}
 
@@ -1153,7 +1155,7 @@ sub cmd_memo {
 
 	# If we found a group to send it to
 	if ($status == 0) {
-		gummydo($server,$target,"stores the message in his databanks for later delivery to $who or their group.");
+		gummydoraw($server,$target,"stores the message in his databanks for later delivery to $who or their group.");
 	}
 	else {
 		# Check to see if we've heard from the target in the last week so we
@@ -1167,7 +1169,7 @@ sub cmd_memo {
 			if (defined $activity{$channelname}->{$lcwho}) {
 				# And if so, check to see if we last heard from them in the last week.
 				if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
-					gummydo($server,$target,"stores the message in his databanks for later delivery to $who.");
+					gummydoraw($server,$target,"stores the message in his databanks for later delivery to $who.");
 					return; # Bail since we found the nick and reported the result.
 				} else {
 					last; # we found the nick but it's stale, give the alternate message.
@@ -1175,7 +1177,7 @@ sub cmd_memo {
 			}
 		}
 		# if we didn't find the nick or it was stale, warn the user
-		gummydo($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
+		gummydoraw($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
 }
 
@@ -1228,7 +1230,7 @@ sub cmd_whoswho {
 		# Do nothing at the moment
 	}
 	else {
-		gummydo($server,$target, "pulls out the list at https://docs.google.com/document/d/1XwQo7I7C3FsvQqeCzTzBTwTqGALdTbil2IMRYUMJu-s/edit?usp=sharing");
+		gummydoraw($server,$target, "pulls out the list at https://docs.google.com/document/d/1XwQo7I7C3FsvQqeCzTzBTwTqGALdTbil2IMRYUMJu-s/edit?usp=sharing");
 	}
 }	
 
@@ -1239,7 +1241,7 @@ $commands{'yourip'} = {
 sub cmd_yourip {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	chomp (my $ip = get('http://icanhazip.com'));
-	gummydo($server, $target, "spits out a ticker tape reading: $ip");
+	gummydoraw($server, $target, "spits out a ticker tape reading: $ip");
 }
 
 $commands{'remindme'} = {
@@ -1254,11 +1256,11 @@ sub cmd_remindme {
 	my %reminder;
 
 	if (!$params[0] && !$params[1] && !$params[2]) {
-		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
+		gummydoraw($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
 		return;
 	}
 	if ($params[0] <= 0) {
-		gummydo($server, $target, "looks at you with a confused look. Delays should be a positive number.");	
+		gummydoraw($server, $target, "looks at you with a confused look. Delays should be a positive number.");	
 		return;
 	}
 
@@ -1271,12 +1273,12 @@ sub cmd_remindme {
 	} elsif ($params[1] eq "d") {
 		$tick_scalar = 86400;
 	} else {
-		gummydo($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
+		gummydoraw($server, $target, "looks at you with a confused look. You might consider !gb help remindme.");	
 		return;
 	}	
 
 	if (!flood("memo",$nick,Irssi::settings_get_time('Gummy_MemoFloodLimit')/1000)) {
-		gummydo($server,$target,"looks like he's overheated. Try again later.");
+		gummydoraw($server,$target,"looks like he's overheated. Try again later.");
 		return;
 	}
 
@@ -1304,7 +1306,7 @@ sub cmd_remindme {
 	splice @reminders,$index,0,\%reminder;
 	write_datastore();
 
-	gummydo($server, $target, "saves it in his databank for later.");
+	gummydoraw($server, $target, "saves it in his databank for later.");
 }
 
 $commands{'aka'} = {
@@ -1336,14 +1338,14 @@ sub cmd_aka {
 		@whoelse = uniq @whoelse;
 
 		if (scalar(@whoelse)) {		
-			gummydo($server, $target, "$who has also been known as " . join(", ",@whoelse) . ".");
+			gummydoraw($server, $target, "$who has also been known as " . join(", ",@whoelse) . ".");
 		}
 		else {
-			gummydo($server, $target, "$who has no known aliases.");
+			gummydoraw($server, $target, "$who has no known aliases.");
 		}
 	}
 	else {
-		gummydo($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
+		gummydoraw($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
 	}
 }
 
@@ -1363,14 +1365,14 @@ sub cmd_seen {
 			$where = lc($params[0]);
 		}
 		if (defined $activity{$where} && defined $activity{$where}->{$who}) {
-			gummydo($server, $target, "last heard from $who in $where on " . POSIX::strftime("%a %b %d %Y at %I:%M %p %Z", localtime($activity{$where}->{$who}))  . ".");
+			gummydoraw($server, $target, "last heard from $who in $where on " . POSIX::strftime("%a %b %d %Y at %I:%M %p %Z", localtime($activity{$where}->{$who}))  . ".");
 		}
 		else {
-			gummydo($server, $target, "shrugs. He hasn't heard from a $who in $where that he can remember.");
+			gummydoraw($server, $target, "shrugs. He hasn't heard from a $who in $where that he can remember.");
 		}
 	}
 	else {
-		gummydo($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
+		gummydoraw($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
 	}
 }
 
@@ -1381,10 +1383,10 @@ $commands{'ping'} = {
 sub cmd_ping {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (lc($target) eq lc($nick)) {
-		gummydo($server, $target, "pongs.");
+		gummydoraw($server, $target, "pongs.");
 	}
 	else {
-		gummydo($server, $target, "reminds you to only send this command in a PM.");
+		gummydoraw($server, $target, "reminds you to only send this command in a PM.");
 	}
 }
 
@@ -1403,7 +1405,7 @@ sub cmd_link {
 		my $groupid = "-" . $nick;
 
 		if (get_nickgroup_from_nick($nick,1)) {
-			gummydo($server,$target,"blinks with a confused look. This nick is already in a group.");
+			gummydoraw($server,$target,"blinks with a confused look. This nick is already in a group.");
 			return;
 		}
 
@@ -1412,7 +1414,7 @@ sub cmd_link {
 	}
 	elsif ($cmd eq "join") {
 		if (!$params[0]) {
-			gummydo($server,$target,"blinks with a confused look. You must provide a nick from a group you'd like to join.");
+			gummydoraw($server,$target,"blinks with a confused look. You must provide a nick from a group you'd like to join.");
 			return;
 		}
 		# get the nick we want to join
@@ -1420,7 +1422,7 @@ sub cmd_link {
 		# get the group it's part of.
 		my $groupid = get_nickgroup_from_nick($targetnick,1);
 		if (!$groupid) {
-			gummydo($server,$target,"blinks with a confused look. That nick is not part of a group.");
+			gummydoraw($server,$target,"blinks with a confused look. That nick is not part of a group.");
 			return;
 		}
 		# and ask the server if we're registered, calling the join request routine with the result.
@@ -1428,13 +1430,13 @@ sub cmd_link {
 	}
 	elsif ($cmd eq "auth") {
 		if (!$params[0]) {
-			gummydo($server,$target,"blinks with a confused look. You must provide the nick you'd like to authorize to join your group.");
+			gummydoraw($server,$target,"blinks with a confused look. You must provide the nick you'd like to authorize to join your group.");
 			return;
 		}
 		my $mygroup = get_nickgroup_from_nick($nick,1);
 
 		if (!$mygroup) {
-			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group.");
+			gummydoraw($server,$target,"blinks with a confused look. You are not part of a nick group.");
 			return;		
 		}
 
@@ -1444,11 +1446,11 @@ sub cmd_link {
 		my $groupid = $pendingnicklinks{$targetnick};
 
 		if (!$groupid) {
-			gummydo($server,$target,"blinks with a confused look. That nick does not have a pending request to join.");
+			gummydoraw($server,$target,"blinks with a confused look. That nick does not have a pending request to join.");
 			return;
 		}
 		if ($groupid != $mygroup) {
-			gummydo($server,$target,"blinks with a confused look. That nick is not asking to join your group.");
+			gummydoraw($server,$target,"blinks with a confused look. That nick is not asking to join your group.");
 			return;
 		}
 
@@ -1457,14 +1459,14 @@ sub cmd_link {
 	}
 	elsif ($cmd eq "leave") {
 		if (!get_nickgroup_from_nick($nick,1)) {
-			gummydo($server,$target,"blinks with a confused look. You are not part of a nick group anyway.");
+			gummydoraw($server,$target,"blinks with a confused look. You are not part of a nick group anyway.");
 			return;		
 		}
 		async_isregistered($server, $nick, \&link_leave_callback, {'server'=>$server, 'target'=>$target});
 	}
 	#DEBUG
 	elsif ($cmd eq "mygroup") {
-		gummydo($server,$target,"You are part of " . get_nickgroup_from_nick($nick,1));
+		gummydoraw($server,$target,"You are part of " . get_nickgroup_from_nick($nick,1));
 	}
 }
 
@@ -1473,13 +1475,13 @@ sub link_creategroup_callback {
 	my ($status, $nick, $data) = @_;
 	if ($status == 3) {
 		add_or_update_nicklink($nick,$data->{id});
-		gummydo($data->{server},$data->{target},"makes a new nick group for $nick.");
+		gummydoraw($data->{server},$data->{target},"makes a new nick group for $nick.");
 	}
 	elsif ($status < 0) {
-		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your nick group was not created.");
+		gummydoraw($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your nick group was not created.");
 	}
 	else {
-		gummydo($data->{server},$data->{target},"rejects your request to create a nickgroup for $nick because you're not authorized by nickserv.");
+		gummydoraw($data->{server},$data->{target},"rejects your request to create a nickgroup for $nick because you're not authorized by nickserv.");
 	}
 }
 
@@ -1490,13 +1492,13 @@ sub link_asktojoin_callback {
 
 	if ($status == 3) {
 		$pendingnicklinks{$nick} = $data->{id};
-		gummydo($data->{server},$data->{target},"creates a request to join " . $data->{joinnick} ."'s nick group.");
+		gummydoraw($data->{server},$data->{target},"creates a request to join " . $data->{joinnick} ."'s nick group.");
 	}
 	elsif ($status < 0) {
-		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to join was discarded.");
+		gummydoraw($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to join was discarded.");
 	}
 	else {
-		gummydo($data->{server},$data->{target},"rejects your request to join " . $data->{joinnick} ."'s nickgroup because you're not authorized by nickserv.");
+		gummydoraw($data->{server},$data->{target},"rejects your request to join " . $data->{joinnick} ."'s nickgroup because you're not authorized by nickserv.");
 	}	
 }
 
@@ -1508,13 +1510,13 @@ sub link_auth_callback {
 	if ($status == 3) {
 		add_or_update_nicklink($data->{authnick},$pendingnicklinks{$data->{authnick}});
 		delete $pendingnicklinks{$data->{authnick}};
-		gummydo($data->{server},$data->{target},"joins " . $data->{authnick} ." to your nick group.");
+		gummydoraw($data->{server},$data->{target},"joins " . $data->{authnick} ." to your nick group.");
 	}
 	elsif ($status < 0) {
-		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to authorize was discarded.");
+		gummydoraw($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to authorize was discarded.");
 	}
 	else {
-		gummydo($data->{server},$data->{target},"rejects your request to authorize " . $data->{authnick} ."'s to your group because you're not authorized by nickserv.");
+		gummydoraw($data->{server},$data->{target},"rejects your request to authorize " . $data->{authnick} ."'s to your group because you're not authorized by nickserv.");
 	}	
 }
 
@@ -1523,13 +1525,13 @@ sub link_leave_callback {
 
 	if ($status == 3) {
 		remove_nicklink($nick);
-		gummydo($data->{server},$data->{target},"removes you from the group.");
+		gummydoraw($data->{server},$data->{target},"removes you from the group.");
 	}
 	elsif ($status < 0) {
-		gummydo($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to leave was discarded.");
+		gummydoraw($data->{server},$data->{target},"didn't hear back from nickserv about $nick. Your request to leave was discarded.");
 	}
 	else {
-		gummydo($data->{server},$data->{target},"rejects your request to leave your group because you're not authorized by nickserv.");
+		gummydoraw($data->{server},$data->{target},"rejects your request to leave your group because you're not authorized by nickserv.");
 	}	
 }
 
@@ -1548,17 +1550,17 @@ sub cmd_help {
 			if (exists $commands{$cmd}->{short_help}) {
 				$msg = $msg . " $commands{$cmd}->{short_help}";
 			}			
-			gummydo($server,$target, $msg);
+			gummydoraw($server,$target, $msg);
 			if (exists $commands{$cmd}->{help}) {
-				gummydo($server,$target, $commands{$cmd}->{help});
+				gummydoraw($server,$target, $commands{$cmd}->{help});
 			}
 		}
 		else {
-			gummydo($server, $target, "blinks. Maybe he doesn't know that command? Try just !gb help");
+			gummydoraw($server, $target, "blinks. Maybe he doesn't know that command? Try just !gb help");
 		}
 	}
 	else {
-		gummydo($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
+		gummydoraw($server,$target,"Usage: !gb <command> [parameter1 [parameter 2 [etc]]])");
 		my @commands;
 		my $count=0;
 		foreach my $cmd (keys %commands) {
@@ -1569,7 +1571,7 @@ sub cmd_help {
 			# If we're at risk of wrapping
 			if ($count >= 400) {
 				# dump out the list and reset.
-				gummydo($server,$target,"Commands: " . join(",",@commands));
+				gummydoraw($server,$target,"Commands: " . join(",",@commands));
 				@commands=();
 				$count = 0;
 			}
@@ -1578,7 +1580,7 @@ sub cmd_help {
 		}
 		# if we've got anything to say, write it out.
 		if ($count > 0) {		
-			gummydo($server,$target,"Commands: " . join(",",@commands));
+			gummydoraw($server,$target,"Commands: " . join(",",@commands));
 		}
 	}
 }
@@ -1599,7 +1601,7 @@ sub cmd_off {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (isgummyop($server,$target,$nick)) {
 		disablegummy();
-		gummysay($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
+		gummysayraw($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
 	}
 }
 
@@ -1616,7 +1618,7 @@ sub parse_command {
 	if (defined $commands{$cmd}) {
 		eval {$commands{$cmd}->{cmd}->($server, $wind, $target, $nick, $args)};
 		if ($@) {
-			gummydo($server,$target,"shutters and clangs. Error appears in his eyes briefly.");
+			gummydoraw($server,$target,"shutters and clangs. Error appears in his eyes briefly.");
 			print ("GUMMY CRITICAL $@");
 			return 0;
 		}
@@ -1693,11 +1695,11 @@ sub deliver_memos {
 			}
 
 			if (!$printed_header) {
-				gummydo($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
+				gummydoraw($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
 				$printed_header = 1;
 			}
 
-			gummydo($server, $memo_target, "[$created] $source: $message");			
+			gummydoraw($server, $memo_target, "[$created] $source: $message");			
 
 			# If it's not a gummy generated memo
 			if ($delivery ne "GCOM") {
@@ -1713,7 +1715,7 @@ sub deliver_memos {
 
 				if ($delivery eq "PRIV") {
 					if (is_user_online($source)) {				
-						gummydo($server, $source, $delivery_notice);
+						gummydoraw($server, $source, $delivery_notice);
 						$delivered = -1;
 					}
 				} else {
@@ -1815,7 +1817,7 @@ sub deliver_reminders {
 		}
 
 		if ($found) {
-			gummydo($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
+			gummydoraw($channel->{server}, $reminder{channel}, "reminds " . $reminder{nick} . ": " . $reminder{message});
 		} else {
 			add_memo($reminder{nick}, "remindme", $reminder{message},"GCOM");
 		}
@@ -1884,7 +1886,7 @@ sub do_greet {
 				$server->command($cmd_text);
 			} else {
 				print "DEBUG: Autogreet emitted directly";
-				gummydo($server,$target, "[$dispnick] $greet");
+				gummydoraw($server,$target, "[$dispnick] $greet");
 			}
 		}
 	}
@@ -1895,7 +1897,7 @@ sub do_greet {
 sub check_release {
 	my ($server, $channel, $nick) = @_;
 	if (lc($nick) eq lc($nomnick)) {
-		gummydo($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
+		gummydoraw($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
 		$nomnick=undef;
 	}
 }
@@ -1910,20 +1912,20 @@ sub do_blink() {
 			foreach (Irssi::channels()) {
 				if (defined $nomnick) {
 					if (rand(1) < .9) {
-						gummydo($_->{server},$_->{name},"lazily drops off of ${nomnick}'s tail.");
+						gummydoraw($_->{server},$_->{name},"lazily drops off of ${nomnick}'s tail.");
 						$nomnick=undef;
 					}
 					else {
-						gummydo($_->{server},$_->{name},"thrashes a bit on ${nomnick}'s tail.");
+						gummydoraw($_->{server},$_->{name},"thrashes a bit on ${nomnick}'s tail.");
 					}
 				}
 				if (Irssi::settings_get_bool('Gummy_Blink')) {
 					if (rand(1) < .9) {
-						gummydo($_->{server},$_->{name},"blinks as he looks about the channel.");
+						gummydoraw($_->{server},$_->{name},"blinks as he looks about the channel.");
 					}
 					else {
-						gummysay($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
-						gummydo($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
+						gummysayraw($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
+						gummydoraw($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
 					}
 				}
 			}
@@ -2004,7 +2006,7 @@ sub event_privmsg {
 						logtext("$nick PRIVMSG $data");
 						# and run the command (if appropriate)
 						if (!parse_command($server, $curwind, $target, $nick, $cmd, $args)) {
-							gummydo($server, $target, "looks at you with a confused look. you might consider !gb help.");
+							gummydoraw($server, $target, "looks at you with a confused look. you might consider !gb help.");
 						}
 					}
 					else {
@@ -2090,17 +2092,17 @@ sub event_nick_join {
 				if (flood("pounce",$channame,Irssi::settings_get_time('Gummy_NomFloodLimit')/1000)) {
 					if (rand(1) < .995 || defined $nomnick) {
 						if (defined $nomnick) {
-							gummydo($server,$channame,"leaps from ${nomnick}'s tail to ${nick}'s.");
+							gummydoraw($server,$channame,"leaps from ${nomnick}'s tail to ${nick}'s.");
 						}
 						elsif (rand(1)<.95) {
-							gummydo($server,$channame,"leaps into the air and noms onto ${nick}'s tail.");
+							gummydoraw($server,$channame,"leaps into the air and noms onto ${nick}'s tail.");
 						}
 						else {
-							gummydo($server,$channame,"leaps into the air, does a triple somersault into a clean swan dive, and then noms onto ${nick}'s tail.");
+							gummydoraw($server,$channame,"leaps into the air, does a triple somersault into a clean swan dive, and then noms onto ${nick}'s tail.");
 						}
 					}
 					else {
-						gummydo($server,$channame,"turns and looks evilly at $nick as they enter the channel. The slight grinding of gears preceeds a tick in his movement. It could just be a trick of the light, but it almost seems as though his eyes glow, just for a little bit.");
+						gummydoraw($server,$channame,"turns and looks evilly at $nick as they enter the channel. The slight grinding of gears preceeds a tick in his movement. It could just be a trick of the light, but it almost seems as though his eyes glow, just for a little bit.");
 					}
 					$nomnick=$nick;
 				}
@@ -2130,7 +2132,7 @@ sub event_nick_change {
 			}
 		}
 		if (lc($nick->{nick}) eq lc($nomnick)) {
-			gummydo($channel->{server},$channel->{name},"lets go of $nomnick to make room for the new pony.");
+			gummydoraw($channel->{server},$channel->{name},"lets go of $nomnick to make room for the new pony.");
 			$nomnick=undef;
 		}
 		if (lc($oldnick) eq lc($nomnick)) {
