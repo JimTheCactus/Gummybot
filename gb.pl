@@ -671,12 +671,17 @@ sub dofunsubs {
 sub gummydo {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
+	gummydoraw($server, $channame, $data);
+}
+
+sub gummydoraw {
+	my ($server, $channame, $text) = @_;
 	if (Irssi::settings_get_bool('Gummy_Hidden')) {
-		$data = 'watches as Gummybot '.$data;
-		print($data);
+		$text = 'watches as Gummybot '.$text;
+		print($text);
 	}
-	$server->command("describe $channame $data");
-	logtext("Gummybot ACTION $channame:$data");
+	$server->command("describe $channame $text");
+	logtext("Gummybot ACTION $channame:$text");
 }
 
 # gummysay(server, channel, text)
@@ -685,8 +690,7 @@ sub gummydo {
 sub gummysay {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
-	$server->command("msg $channame Nom! ($data)");
-	logtext("Gummybot PRIVMSG $channame:Nom! ($data)");
+	gummyrawsay($server, $channame, $data);
 }
 
 sub gummyrawsay {
