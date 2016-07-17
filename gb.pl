@@ -308,6 +308,7 @@ sub connect_to_database {
 				SourceNick CHAR(30) NOT NULL,
 				DeliveryMode CHAR(4),
 				CreatedTime DATETIME,
+				NotBefore DATETIME,
 				Message TEXT,
 				INDEX (Nick)
 				)
@@ -1662,13 +1663,13 @@ sub deliver_memos {
 		my $groupid = get_nickgroup_from_nick($nick,1);
 		my $memo_query;
 		if (!$groupid) {
-			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=?")
+			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=? AND (NotBefore <= NOW() OR NotBefore IS NULL)")
 				or die DBI->errstr;
 			$memo_query->execute(lc($nick))
 				or die DBI->errstr;
 		}
 		else {
-			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE nick=? OR nick=?")
+			$memo_query = $database->prepare_cached("SELECT ID, Nick, SourceNick, DeliveryMode, CreatedTime, Message FROM " . $database_prefix . "memos WHERE (nick=? OR nick=?) AND (NotBefore <= NOW() OR NotBefore IS NULL)")
 				or die DBI->errstr;
 			$memo_query->execute(lc($nick),$groupid)
 				or die DBI->errstr;
