@@ -1,4 +1,5 @@
 use strict;
+use warnings;
 use vars qw($VERSION %IRSSI);
 use POSIX;
 use Irssi;
@@ -9,7 +10,7 @@ use Config::Tiny;
 use List::MoreUtils qw(uniq any);
 use POSIX qw/strftime/;
 use LWP::Simple;
-use Switch;
+#use Switch;
 use DBI;
 
 my $gummyver = "3.2.0";
@@ -20,11 +21,11 @@ my $gummyver = "3.2.0";
 
 $VERSION = '1.00';
 %IRSSI = (
-	authors     =>	'Jim The Cactus',
-	contact     =>	'themanhimself@jimthecactus.com',
-	name        =>	"Gummybot $gummyver",
-	description => 	'The one and only Gummybot' ,
-	license     =>	'Public Domain',
+	authors     =>  'Jim The Cactus',
+	contact     =>  'themanhimself@jimthecactus.com',
+	name        =>  "Gummybot $gummyver",
+	description =>  'The one and only Gummybot' ,
+	license     =>  'Public Domain',
 );
 
 #
@@ -107,24 +108,27 @@ Irssi::settings_add_str('GummyBot','Gummy_AutogreetRedirectTarget','gummybot|aut
 # getdir(file)
 # Returns the full path to a file after adjusting for the root directory.
 sub getdir {
+	my ($file) = @_;
 	my $rootdir = Irssi::settings_get_str('Gummy_RootDir');
 
 	$rootdir =~ s/^\s+|\s+$//g;
 	if ($rootdir eq '') { # If the root directory field is blank, return it as-is.
-		return @_;
+		return $file;
 	}
 	else {
-		return File::Spec->catfile(Irssi::settings_get_str('Gummy_RootDir'),@_);
+		return File::Spec->catfile(Irssi::settings_get_str('Gummy_RootDir'),$file);
 	}
 }
 
 # logtext(message)
 # Write a line of text to Gummy's admin log.
 sub logtext {
-	open LOGFILE, ">> ".getdir(Irssi::settings_get_str('Gummy_LogFile'));
-	print LOGFILE POSIX::strftime("%Y%m%d %H:%M:%S", localtime);
-	print LOGFILE ":@_\n";
-	close LOGFILE;
+	my $logfile;
+	open $logfile, ">>", getdir(Irssi::settings_get_str('Gummy_LogFile'));
+	print $logfile POSIX::strftime("%Y%m%d %H:%M:%S", localtime);
+	print $logfile ":@_\n";
+	close $logfile;
+	return;
 }
 
 # trim(text)
@@ -138,6 +142,7 @@ sub trim {
 # enablegummy(['quiet'])
 # Starts gummy. Suppresses the boot message if the first argument is 'quiet'
 sub enablegummy {
+	my ($param1) = @_;
 	$gummyenabled = 1;
 	$lastblink=time;
 	$lastmsg=time;
@@ -145,11 +150,12 @@ sub enablegummy {
 	loadfunstuff();
 	$timerhandle=Irssi::timeout_add(60000,"event_minutely_tick", "") or print "Unable to create timeout.";
 	logtext("Gummy Enabled.");
-	if (lc($_[0]) ne "quiet") {
+	if (lc($param1) ne "quiet") {
 		foreach (Irssi::channels()) {
 			gummydoraw($_->{server},$_->{name},"makes a slight whining noise as his gleaming red eyes spring to life. A robotic voice chirps out, \"Gummybot Version $gummyver Enabled.\" After a few moments, his eyes turn pink and docile, and he blinks innocently at the channel.");
 		}
 	}
+	return;
 }
 
 # disablegummy()
@@ -158,6 +164,7 @@ sub disablegummy {
 	$gummyenabled = 0;
 	Irssi::timeout_remove($timerhandle) or print "Unable to kill timer handle.";
 	logtext("Gummy Disabled.");
+	return;
 }
 
 # isgummyop(server, channel, nick)
@@ -197,6 +204,7 @@ sub async_isregistered {
 
 	# and issue the request to nickserv.
 	$server->command("msg nickserv status $nick");
+	return;
 }
 
 sub registered_timeout {
@@ -211,6 +219,7 @@ sub registered_timeout {
 	if ($@) {
 		print ("GUMMY CRITICAL in auth timeout: $@");
 	}
+	return;
 }
 
 # write_datastore()
@@ -228,6 +237,7 @@ sub write_datastore {
 	$datastore{aliases}=\%aliases;
 	$datastore{activity}=\%activity;
 	store \%datastore, getdir(Irssi::settings_get_str('Gummy_DataFile'));
+	return;
 }
 
 # read_datastore()
@@ -273,6 +283,7 @@ sub read_datastore {
 			print("Loaded inferred aliases for $count nicks.");
 		}
 	}
+	return;
 }
 
 sub connect_to_database {
@@ -343,10 +354,10 @@ sub get_nickgroup_from_nick {
 	$group_query->execute(lc($nick))
 		or die DBI->errstr;
 	if (my @nickgroup = $group_query->fetchrow_array()) {
-		return @nickgroup[0];
+		return $nickgroup[0];
 	}
 	elsif ($undefifungrouped) {
-		return undef;
+		return;
 	}
 	else {
 		return $nick;
@@ -366,7 +377,7 @@ sub isnick_in_nickgroup {
 sub isnickgroup_in_channel {
 	my ($channelref, $groupid) = @_;
 	if (!defined $groupid) {
-		return undef;
+		return;
 	}
 
 	connect_to_database() or die("Couldn't open database. Check connection settings.");
@@ -387,7 +398,7 @@ sub isnickgroup_in_channel {
 			return $nickgroup[0];
 		}
 	}
-	return undef;
+	return;
 }
 
 sub add_or_update_nicklink {
@@ -402,6 +413,8 @@ sub add_or_update_nicklink {
 		or die DBI->errstr;
 	$group_query->execute($nick,$groupid,$groupid)
 		or die DBI->errstr;
+
+	return;
 }
 
 sub remove_nicklink {
@@ -411,14 +424,16 @@ sub remove_nicklink {
 		or die DBI->errstr;
 	$group_query->execute(lc($nick))
 		or die DBI->errstr;
+
+	return;
 }
 
 
 # loadfunfile(file)
 # Parses one funfile for entries and adds it to the funfile database.
 sub loadfunfile {
+	my ($type)=@_;
 	my $count=0;
-	my $type=$_[0];
 	my @lines;
 	my $filename = getdir("gummyfun/$type");
 	unless(-e $filename) {
@@ -426,8 +441,9 @@ sub loadfunfile {
 		return 0;
 	}
 
-	open FUNFILE, $filename;
-	while (<FUNFILE>) {
+	my $funfile;
+	open $funfile, "<", $filename;
+	while (<$funfile>) {
 		my $line = $_;
 		chomp($line);
 		$line =~ s/^\s+|\s+$//g;
@@ -436,7 +452,7 @@ sub loadfunfile {
 			$count++;
 		}
 	}
-	close FUNFILE;
+	close $funfile;
 	$funstuff{$type}=\@lines;
 	return $count;
 }
@@ -449,8 +465,9 @@ sub loadmanualaliases {
 		return 0;
 	}
 	# Load manual aliases
-	open ALIASFILE, $filename;
-	while (<ALIASFILE>) {
+	my $aliasfile;
+	open $aliasfile, "<", $filename;
+	while (<$aliasfile>) {
 		chomp;
 		my @nicks = split(/\s+/);
 		foreach (@nicks) {
@@ -458,7 +475,7 @@ sub loadmanualaliases {
 			$count++;
 		}
 	}
-	close ALIASFILE;
+	close $aliasfile;
 	return $count;
 }
 
@@ -476,6 +493,7 @@ sub readponyfile {
 	# Merge the file to the overall list.
 	# (Yes, I'm merging a set of blessed hashes. PERL is weird, but helpful for once.)
 	%$ponylist = (%$ponylist, %$thisfile);
+	return;
 }
 
 sub loadsubstitutions {
@@ -611,6 +629,8 @@ sub loadfunstuff {
 	# Mark that we've updated the funsubs.
 	$lastupdate = time;
 	print("Done!");
+
+	return;
 }
 
 # dofunsubs(server, channel, text)
@@ -673,6 +693,7 @@ sub gummydo {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
 	gummydoraw($server, $channame, $data);
+	return;
 }
 
 sub gummydoraw {
@@ -683,6 +704,7 @@ sub gummydoraw {
 	}
 	$server->command("describe $channame $text");
 	logtext("Gummybot ACTION $channame:$text");
+	return;
 }
 
 # gummysay(server, channel, text)
@@ -692,13 +714,14 @@ sub gummysay {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
 	gummyrawsay($server, $channame, $data);
+	return;
 }
 
 sub gummyrawsay {
 	my ($server, $channame, $text) = @_;
 	$server->command("msg $channame Nom! ($text)");
-	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");
-	
+	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");	
+	return;
 }
 
 # flood (type, target, timeout)
@@ -733,12 +756,14 @@ sub floodreset {
 	if (defined $floodtimes{$augtarget}) {
 		$floodtimes{$augtarget} = 0;
 	}
+	return;
 }
 
 # nickflood(nick,timeout)
 # Convience function for checking if a nick is spamming. Calls flood("nick",nick,timeout)
 sub nickflood {
-	return flood("nick",@_);
+	my ($timeout) = @_;
+	return flood("nick",$timeout);
 }
 
 #
@@ -759,6 +784,8 @@ $commands{'ver'} = {
 sub cmd_ver {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummysayraw($server, $target, "Gummybot is currently version $gummyver.");
+
+	return;
 }
 
 $commands{'nom'} = {
@@ -805,6 +832,8 @@ sub cmd_nom {
 			$nomnick = $args;
 		}
 	}
+
+	return;
 }
 
 $commands{'say'} = {
@@ -817,6 +846,8 @@ sub cmd_say {
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
 		gummysay($server, $target, $args);
 	}
+
+	return;
 }
 
 
@@ -830,6 +861,8 @@ sub cmd_do {
 	if (Irssi::settings_get_bool('Gummy_AllowRemote')){
 		gummydo($server, $target, $args);
 	}
+
+	return;
 }
 
 $commands{'telesay'} = {
@@ -855,6 +888,8 @@ sub cmd_telesay {
 			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
+
+	return;
 }
 
 $commands{'teledo'} = {
@@ -880,6 +915,8 @@ sub cmd_teledo {
 			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
+
+	return;
 }
 
 $commands{'crickets'} = {
@@ -889,6 +926,8 @@ $commands{'crickets'} = {
 sub cmd_crickets {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummydoraw($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
+
+	return;
 }
 
 $commands{'coolkids'} = {
@@ -914,6 +953,8 @@ sub cmd_coolkids {
 			gummydoraw($server, $target, "hands out shades to all of the cool ponies in the channel.");
 		}
 	}
+
+	return;
 }
 # docoolkids(server, channel, channeltorespondto, requestingnick)
 # Determines who is active on the channel and emits the list to the target.
@@ -936,6 +977,8 @@ sub docoolkids {
 	else {
 		gummydoraw($server,$target, "dons his best shades. Apparantly, not even $nick is cool enough to make the list.");
 	}
+
+	return;
 }
 
 
@@ -952,6 +995,8 @@ sub cmd_getitoff {
 	else {
 		gummydoraw($server, $target, "blinks absently; his already empty maw hanging open slightly.");
 	}	
+
+	return;
 }
 
 $commands{'dance'} = {
@@ -961,6 +1006,8 @@ $commands{'dance'} = {
 sub cmd_dance {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummydoraw($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
+
+	return;
 }
 
 $commands{'isskynet()'} = {
@@ -971,6 +1018,8 @@ sub cmd_isskynet {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	gummysayraw($server, $target, "89");
 	gummysayraw($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
+
+	return;
 }
 
 $commands{'roll'} = {
@@ -981,12 +1030,12 @@ $commands{'roll'} = {
 sub cmd_roll {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	my @params = split(/\s+/, $args);
-	if (!int(@params[1]) || !int(@params[0])) {
+	if (!int($params[1]) || !int($params[0])) {
 		gummydoraw($server, $target, "Blinks. How many of what dice? !gb roll <number> <sides>");
 		return;
 	}
-	my $rolls = int(@params[0]);
-	my $sides = int(@params[1]);
+	my $rolls = int($params[0]);
+	my $sides = int($params[1]);
 
 	if ($rolls > 10 || $rolls < 1) {
 		gummydoraw($server, $target, "looks around but doesn't find that many dice. He only has 10!");
@@ -1008,6 +1057,8 @@ sub cmd_roll {
 	}
 	$result = "$result} = $sum";
 	gummydoraw($server, $target, $result);
+
+	return;
 }
 
 $commands{'choose'} = {
@@ -1030,6 +1081,8 @@ sub cmd_choose {
 	}
 	my $choice_num = int(rand(scalar(@choices)));
 	gummydoraw($server,$target, "Blinks towards " . $choices[$choice_num]);
+
+	return;
 }
 
 $commands{'om'} = {
@@ -1053,9 +1106,10 @@ sub cmd_om {
 			# sub out the fun stuff so that the behavior is static.
 			$args = dofunsubs($server, $target, $args);
 
-			open OMADD, ">> ".getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
-			print OMADD "${nick}\@${target}: $args\n";
-			close OMADD;
+			my $omadd;
+			open $omadd, ">> ", getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
+			print $omadd "${nick}\@${target}: $args\n";
+			close $omadd;
 			gummysayraw($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
 		}
 		else {
@@ -1076,6 +1130,8 @@ sub cmd_om {
 	else {
 		gummydoraw($server,$target,"blinks at you in confusion. Did you mean to nom?");
 	}
+
+	return;
 }
 
 $commands{'autogreet'} = {
@@ -1102,6 +1158,8 @@ sub cmd_autogreet {
 	else {
 		gummydoraw($server,$target,"ignores you as autogreets have been disabled.");
 	}
+
+	return;
 }
 
 $commands{'memo'} = {
@@ -1180,6 +1238,8 @@ sub cmd_memo {
 		# if we didn't find the nick or it was stale, warn the user
 		gummydoraw($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
+	
+	return;
 }
 
 # memo_get_greedy_destination(to)
@@ -1203,6 +1263,8 @@ sub memo_get_greedy_destination {
 	else {
 		return (1,substr(lc($to),1));
 	}
+	
+	return;
 }
 
 # add_memo(to, from, message, [mode])
@@ -1218,7 +1280,6 @@ sub add_memo {
 	$insert_query->execute($finalto, $from, $mode, $message)
 		or die DBI->errstr;
 	return $status
-#bookmark
 }
 
 $commands{'whoswho'} = {
@@ -1233,7 +1294,9 @@ sub cmd_whoswho {
 	else {
 		gummydoraw($server,$target, "pulls out the list at https://docs.google.com/document/d/1XwQo7I7C3FsvQqeCzTzBTwTqGALdTbil2IMRYUMJu-s/edit?usp=sharing");
 	}
-}	
+	
+	return;
+}
 
 $commands{'yourip'} = {
 		cmd => \&cmd_yourip,
@@ -1243,6 +1306,8 @@ sub cmd_yourip {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	chomp (my $ip = get('http://icanhazip.com'));
 	gummydoraw($server, $target, "spits out a ticker tape reading: $ip");
+	
+	return;
 }
 
 $commands{'remindme'} = {
@@ -1308,6 +1373,8 @@ sub cmd_remindme {
 	write_datastore();
 
 	gummydoraw($server, $target, "saves it in his databank for later.");
+	
+	return;
 }
 
 $commands{'aka'} = {
@@ -1348,6 +1415,8 @@ sub cmd_aka {
 	else {
 		gummydoraw($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
 	}
+	
+	return;
 }
 
 $commands{'seen'} = {
@@ -1375,6 +1444,8 @@ sub cmd_seen {
 	else {
 		gummydoraw($server, $target, "looks at you with a confused look. Please include who do you want to know about.");
 	}
+	
+	return;
 }
 
 $commands{'ping'} = {
@@ -1389,6 +1460,8 @@ sub cmd_ping {
 	else {
 		gummydoraw($server, $target, "reminds you to only send this command in a PM.");
 	}
+	
+	return;
 }
 
 $commands{'link'} = {
@@ -1469,6 +1542,8 @@ sub cmd_link {
 	elsif ($cmd eq "mygroup") {
 		gummydoraw($server,$target,"You are part of " . get_nickgroup_from_nick($nick,1));
 	}
+	
+	return;
 }
 
 # Data here is a hash reference with server, target, and id.
@@ -1484,6 +1559,8 @@ sub link_creategroup_callback {
 	else {
 		gummydoraw($data->{server},$data->{target},"rejects your request to create a nickgroup for $nick because you're not authorized by nickserv.");
 	}
+	
+	return;
 }
 
 # Data here is a hash reference with server, target, id, and joinnick.
@@ -1501,6 +1578,8 @@ sub link_asktojoin_callback {
 	else {
 		gummydoraw($data->{server},$data->{target},"rejects your request to join " . $data->{joinnick} ."'s nickgroup because you're not authorized by nickserv.");
 	}	
+	
+	return;
 }
 
 # Data here is a hash reference with server, target, id, and authnick.
@@ -1519,6 +1598,8 @@ sub link_auth_callback {
 	else {
 		gummydoraw($data->{server},$data->{target},"rejects your request to authorize " . $data->{authnick} ."'s to your group because you're not authorized by nickserv.");
 	}	
+	
+	return;
 }
 
 sub link_leave_callback {
@@ -1534,6 +1615,8 @@ sub link_leave_callback {
 	else {
 		gummydoraw($data->{server},$data->{target},"rejects your request to leave your group because you're not authorized by nickserv.");
 	}	
+	
+	return;
 }
 
 $commands{'help'} = {
@@ -1584,6 +1667,8 @@ sub cmd_help {
 			gummydoraw($server,$target,"Commands: " . join(",",@commands));
 		}
 	}
+	
+	return;
 }
 
 sub cmd_on {
@@ -1592,6 +1677,8 @@ sub cmd_on {
 		enablegummy();
 		floodreset("nick",$target);
 	}
+	
+	return;
 }
 
 $commands{'off'} = {
@@ -1604,6 +1691,8 @@ sub cmd_off {
 		disablegummy();
 		gummysayraw($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
 	}
+	
+	return;
 }
 
 
@@ -1640,7 +1729,7 @@ sub is_user_online {
 			return $nickhandle;
 		}
 	}
-	return undef;
+	return;
 }
 
 sub is_user_in_channel {
@@ -1649,7 +1738,7 @@ sub is_user_in_channel {
 	if ($channel) {
 		return $channel->nick_find($nick);
 	}
-	return undef;
+	return;
 }
 
 # deliver_memos(server, target channel, nick)
@@ -1740,8 +1829,10 @@ sub deliver_memos {
 		$purge_query->execute_array({ ArrayTupleStatus => \my @tuple_status },\@purgelist)
 			or die DBI->errstr;
 
-#bookmark
+
 	}
+	
+	return;
 }
 
 # prune_activity()
@@ -1771,6 +1862,8 @@ sub prune_activity {
 	foreach (@chanprunelist) {
 		delete($activity{$_});
 	}
+	
+	return;
 }
 
 # deliver_reminders()
@@ -1826,6 +1919,8 @@ sub deliver_reminders {
 	if ($changed) {
 		write_datastore();
 	}
+	
+	return;
 }
 
 # add_alias(old nick, new nick)
@@ -1865,6 +1960,8 @@ sub add_alias {
 		}
 	}
 	$aliases{$lcnew} = $newref; # Commit the new nick to the system (clobbering any existing stuff.)
+	
+	return;
 }
 
 # do_greet(server, target channel, nick, displayed nick)
@@ -1891,6 +1988,8 @@ sub do_greet {
 			}
 		}
 	}
+	
+	return;
 }
 
 # check_release(server, channel, nick)
@@ -1901,6 +2000,8 @@ sub check_release {
 		gummydoraw($server,$channel,"drops off of ${nick}'s tail as they make their way out.");
 		$nomnick=undef;
 	}
+	
+	return;
 }
 
 # do_blink()
@@ -1933,6 +2034,8 @@ sub do_blink() {
 			$lastblink=time;
 		}
 	}
+	
+	return;
 }
 
 # mark_activty(server, channel, nick)
@@ -1944,6 +2047,8 @@ sub mark_activity {
 		$lastmsg = time;
 		$activity{lc($channel)}->{lc($nick)} = time;
 	}
+	
+	return;
 }
 
 #
@@ -1969,6 +2074,8 @@ sub event_minutely_tick {
 		logtext("ERROR","event_minutely_tick",$@);
 		print("GUMMY CRITICAL: event_minutely_tick, $@");
 	}
+	
+	return;
 }
 
 # Called when a private message is received
@@ -2029,6 +2136,8 @@ sub event_privmsg {
 		logtext("ERROR","event_privmsg",$@);
 		print("GUMMY CRITICAL: event_privmsg, $@");
 	}
+	
+	return;
 }
 
 # Called when a user does an ACTION
@@ -2045,6 +2154,8 @@ sub event_action {
 		logtext("ERROR","event_action",$@);
 		print("GUMMY CRITICAL: event_action, $@");
 	}	
+	
+	return;
 }
 
 # Called when a user does an ACTION
@@ -2068,6 +2179,8 @@ sub event_notice {
 		logtext("ERROR","event_notice",$@);
 		print("GUMMY CRITICAL: event_notice, $@");
 	}	
+	
+	return;
 }
 
 # Called when a user joins
@@ -2115,6 +2228,8 @@ sub event_nick_join {
 		logtext("ERROR","event_nick_join",$@);
 		print("GUMMY CRITICAL: event_nick_join, $@");
 	}
+	
+	return;
 }
 
 # Called when a user changes nicks
@@ -2151,6 +2266,8 @@ sub event_nick_change {
 		logtext("ERROR","event_nick_change",$@);
 		print("GUMMY CRITICAL: event_nick_change, $@");
 	}
+	
+	return;
 }
 
 # Called when a user leaves
@@ -2164,6 +2281,8 @@ sub event_nick_part {
 		logtext("ERROR","event_nick_part",$@);
 		print("GUMMY CRITICAL: event_nick_part, $@");
 	}
+	
+	return;
 }
 
 # Called when a user quits
@@ -2180,6 +2299,8 @@ sub event_nick_quit {
 		logtext("ERROR","event_nick_quit",$@);
 		print("GUMMY CRITICAL: event_nick_quit, $@");
 	}
+	
+	return;
 }
 
 # Called when a user is kicked from the channel
@@ -2193,6 +2314,8 @@ sub event_nick_kick {
 		logtext("ERROR","event_nick_kick",$@);
 		print("GUMMY CRITICAL: event_nick_kick, $@");
 	}
+	
+	return;
 }
 
 # Main command for controlling gummy from the window
@@ -2257,23 +2380,27 @@ sub gummy_command {
 	else {
 		print "GUMMY: Command '$cmd' not recognized.";
 	}
+	
+	return;
 }
 
 # Bind our command
-Irssi::command_bind("gummy", "gummy_command");
+Irssi::command_bind('gummy', 'gummy_command');
 
 # Bind our events
-Irssi::signal_add("event privmsg", "event_privmsg");
-Irssi::signal_add("message join","event_nick_join");
-Irssi::signal_add("message part","event_nick_part");
-Irssi::signal_add("message kick","event_nick_kick");
-Irssi::signal_add("message quit","event_nick_quit");
-Irssi::signal_add("nicklist changed","event_nick_change");
-Irssi::signal_add("message irc action", "event_action");
-Irssi::signal_add("message irc notice", "event_notice");
+Irssi::signal_add('event privmsg', 'event_privmsg');
+Irssi::signal_add('message join','event_nick_join');
+Irssi::signal_add('message part','event_nick_part');
+Irssi::signal_add('message kick','event_nick_kick');
+Irssi::signal_add('message quit','event_nick_quit');
+Irssi::signal_add('nicklist changed','event_nick_change');
+Irssi::signal_add('message irc action', 'event_action');
+Irssi::signal_add('message irc notice', 'event_notice');
 
 # Lastly, if we've been told to start on, boot Gummy quietly.
 
 if (Irssi::settings_get_bool('Gummy_AutoOn')) {
-	enablegummy("quiet");	
+	enablegummy('quiet');	
 }
+
+1;
