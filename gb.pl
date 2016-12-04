@@ -629,6 +629,9 @@ sub dofunsubs {
 	}
 
 	if ($server->ischannel($channame)) {
+		my $ticktime = sprintf("%.1f",(time - $activity{$channame}->{$channame+'!!!'})/60);
+		$text =~ s/%ticks/$ticktime/ig;
+
 		my $channel = $server->channel_find($channame);
 		my @nicks;
 		# Go through the list of known active nicks
@@ -691,10 +694,10 @@ sub gummydoraw {
 sub gummysay {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
-	gummyrawsay($server, $channame, $data);
+	gummysayraw($server, $channame, $data);
 }
 
-sub gummyrawsay {
+sub gummysayraw {
 	my ($server, $channame, $text) = @_;
 	$server->command("msg $channame Nom! ($text)");
 	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");
@@ -1943,6 +1946,8 @@ sub mark_activity {
 	if ($server->ischannel($channel)) {
 		$lastmsg = time;
 		$activity{lc($channel)}->{lc($nick)} = time;
+		$activity{lc($channel)}->{lc($channel)+'!!!'} = $activity{lc($channel)}->{lc($channel)};
+		$activity{lc($channel)}->{lc($channel)} = time;
 	}
 }
 
