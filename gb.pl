@@ -976,6 +976,15 @@ sub cmd_isskynet {
 	gummysayraw($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
 }
 
+$commands{'rimshot'} = {
+		cmd=>\&cmd_rimshot,
+		help=>"Causes Gummy to verify whether he is or is not Skynet."
+	};
+sub cmd_rimshot {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummydoraw($server, $target, "looks blankly at a drum set in the corner.");
+}
+
 $commands{'roll'} = {
 		cmd=>\&cmd_roll,
 		short_help => "<dice> <sides>",
