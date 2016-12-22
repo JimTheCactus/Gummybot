@@ -1598,23 +1598,16 @@ sub cmd_help {
 	}
 }
 
-sub cmd_on {
-	my ($server, $wind, $target, $nick, $args) = @_;
-	if (isgummyop($server,$target,$nick)) {
-		enablegummy();
-		floodreset("nick",$target);
-	}
-}
-
 $commands{'off'} = {
 		cmd=>\&cmd_off,
-		help => "Causes Gummy to disable himself. Only usable by channel ops."
+		help => "Causes Gummy to disable himself until manually reset. Only usable by channel ops."
 	};
 sub cmd_off {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (isgummyop($server,$target,$nick)) {
 		disablegummy();
 		gummysayraw($server,$target,"Gummy bot disabled. Daisy, daisy, give me... your ans.. wer...");
+		$server->command("quit")
 	}
 }
 
@@ -2031,9 +2024,6 @@ sub event_privmsg {
 				else {
 					print("Denied! $nick is flooded.");
 				}
-			}
-			elsif (lc($cmd) eq "on") {
-				cmd_on($server,$curwind,$target,$nick, $args);
 			}
 	
 		}
