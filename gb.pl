@@ -2050,7 +2050,7 @@ sub mark_activity {
 	if ($server->ischannel($channel)) {
 		$lastmsg = time;
 		$activity{lc($channel)}->{lc($nick)} = time;
-		$activity{lc($channel)}->{lc($channel)+'!!!'} = $activity{lc($channel)}->{lc($channel)};
+		$activity{lc($channel)}->{lc($channel).'!!!'} = $activity{lc($channel)}->{lc($channel)};
 		$activity{lc($channel)}->{lc($channel)} = time;
 	}
 	
