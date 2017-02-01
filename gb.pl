@@ -2014,7 +2014,17 @@ sub event_privmsg {
 						logtext("$nick PRIVMSG $data");
 						# and run the command (if appropriate)
 						if (!parse_command($server, $curwind, $target, $nick, $cmd, $args)) {
-							gummydoraw($server, $target, "looks at you with a confused look. you might consider !gb help.");
+							# if it was a bad command, try guessing it's a memo
+							# if the "command" matches a nick we've seen.
+							if (exists $activity{lc($target)}->{lc($cmd)}) {
+								$args = $cmd . " " . $args;
+								print "!gb memo $args";
+								#if so, restructure it as a memo command and do that.
+								cmd_memo($server, $curwind, $target, $nick, $args)
+							}
+							else {
+								gummydoraw($server, $target, "looks at you with a confused look as he doesn't know how to $cmd and that's not someone he can memo. You might consider !gb help.");
+							}
 						}
 					}
 					else {
