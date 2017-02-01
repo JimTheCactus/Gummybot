@@ -44,7 +44,6 @@ my %activity; # Keeps track of when we last saw a specific person
 my $lastupdate=time; # Keeps track of when we last loaded the fun stuff
 my $nomnick; # Keeps track of who gummy is attached to
 my %greets; # Holds the greeting messages
-#my %memos; # Holds the current pending memos
 my @reminders=(); # Hold the list of pending reminders.
 my %commands=(); # Holds the table of commands.
 my %aliases; # Holds the list of known aliases for current nicknames.
@@ -261,12 +260,6 @@ sub read_datastore {
 			$count = scalar keys %greets;
 			print("Loaded $count greets.");
 		}
-		#JMO: Disabled for DB access switch
-		#if (defined($datastore{memos})) {
-		#	%memos = %{$datastore{memos}};
-		#	$count = scalar keys %memos;
-		#	print("Loaded memos for $count nicks.");
-		#}
 		if (defined($datastore{reminders})) {
 			@reminders = @{$datastore{reminders}};
 			$count = scalar @reminders;
@@ -287,7 +280,6 @@ sub read_datastore {
 }
 
 sub connect_to_database {
-#bookmark
 	# ignore errors from this section; if we can't test the database
 	# state then making a new connection isn't a bad plan anyway.
 	eval {
@@ -389,7 +381,6 @@ sub isnickgroup_in_channel {
 
 	# grab all the nicks in this group
 	while (my @nickgroup = $group_query->fetchrow_array()) {
-		print "Checking for nick " . $nickgroup[0];
 		# and if we found our nick in this channel
 		if ($channelref->nick_find($nickgroup[0])) {
 			# flush the handle
@@ -684,7 +675,7 @@ sub dofunsubs {
 	$text =~ s/%an([\s]+[aeiou])/an$1/ig;
 	$text =~ s/%an([\s]+[^aeiou])/a$1/ig;
 	if ($count == 100) {
-		print "BAILED!";
+		print "Bailed from funsubs. Too many subs or recursion!";
 	}
 	return $text;
 }
@@ -1261,7 +1252,6 @@ sub cmd_memo {
 # a group, and 1 for explicitly direct groups.
 sub memo_get_greedy_destination {
 	my ($to) = @_;	
-	print "Getting destination for $to";
 
 	# if they call don't call out out a direct delivery
 	if (substr($to,0,1) ne "-") {
@@ -1972,22 +1962,17 @@ sub add_alias {
 # Issues an autogreet (if appropriate) for nick. Shows the value of the displayed nick (useful for the two nick change modes)
 sub do_greet {
 	my ($server, $target, $nick, $dispnick, $force) = @_;
-	print "DEBUG: Autogreet check";
 	if ($force || flood('greet', $nick, Irssi::settings_get_time('Gummy_GreetFloodLimit')/1000)) {
-		print "DEBUG: Autogreet not flooded";
 		my $greetnick;
 		$greetnick=lc($nick);
 		if (exists $greets{$greetnick}) {
-			print "DEBUG: Autogreet exists";
 			my $greet = $greets{$greetnick};
 			# If we've been asked to redirect
 			if (Irssi::settings_get_bool('Gummy_AutogreetRedirect')) {
 				my $fullgreet = dofunsubs($server, $target, $greet);
 				my $cmd_text = "msg " . Irssi::settings_get_str('Gummy_AutogreetRedirectTarget') . " !gbrelay $target [$dispnick] $fullgreet";
-				print "DEBUG: $cmd_text";
 				$server->command($cmd_text);
 			} else {
-				print "DEBUG: Autogreet emitted directly";
 				gummydoraw($server,$target, "[$dispnick] $greet");
 			}
 		}
@@ -2124,7 +2109,6 @@ sub event_privmsg {
 							# if the "command" matches a nick we've seen.
 							if (exists $activity{lc($target)}->{lc($cmd)}) {
 								$args = $cmd . " " . $args;
-								print "!gb memo $args";
 								#if so, restructure it as a memo command and do that.
 								cmd_memo($server, $curwind, $target, $nick, $args)
 							}
