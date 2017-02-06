@@ -708,7 +708,7 @@ sub gummysay {
 	my ($server, $channame, $text) = @_;
 	my $data = dofunsubs($server,$channame,$text);
 
-	gummyrawsay($server, $channame, $data);
+	gummysayraw($server, $channame, $data);
 	return;
 }
 
