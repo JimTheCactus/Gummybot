@@ -1,3 +1,5 @@
+# This is a special variant of gummybot intended to be used on april fools day.
+# It's extra Spades-y. :3
 use strict;
 use warnings;
 use vars qw($VERSION %IRSSI);
