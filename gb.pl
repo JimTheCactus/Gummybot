@@ -633,22 +633,14 @@ sub dofunsubs {
 	$text =~ s/%wut/%weird%living/g; # special handling for the compound %wut
 
 	while ($text =~ $funsublookup && $count < 100) {
-		my $arref = $funsubs{'object'};
+		my $arref = $funsubs{$1};
 		my @choices = @$arref;
-		my $item = @choices[rand(scalar @choices)];
-		if (rand() > .707) {
-			@choices = ("Spades", "spads");
-			$item = @choices[rand(scalar @choices)];
-		}
-		if (rand() > .707) {
-			$item = $item . " on fire"
-		}		
-		$text = $` . $item . $';
+		$text = $` . @choices[rand(scalar @choices)] . $';
 		$count = $count + 1;
 	}
 
 	if ($server->ischannel($channame)) {
-		my $ticktime = sprintf("%.1f",(time - $activity{$channame}->{$channame.'!!!'})/60);
+		my $ticktime = sprintf("%.1f",(time - $activity{$channame}->{$channame+'!!!'})/60);
 		$text =~ s/%ticks/$ticktime/ig;
 
 		my $channel = $server->channel_find($channame);
@@ -656,8 +648,8 @@ sub dofunsubs {
 		# Go through the list of known active nicks
 		foreach my $nick ($channel->nicks()) {
 			my $nickname = $nick->{nick};
-			# if they haven't been around for a while...
-			if (defined $nickname && time - $activity{$channame}->{lc($nickname)} > 600) {
+			# if they're still logged in...
+			if (defined $nickname && time - $activity{$channame}->{lc($nickname)} < 600) {
 				# Add them to the list
 				push @nicks,$nickname;
 			}
@@ -670,45 +662,6 @@ sub dofunsubs {
 		my $mynum=rand(scalar(@nicks));
 		my $peepnick=splice(@nicks,$mynum,1);
 
-		while ($text =~ s/(^|[^\\])%inactivepeep/$1$peepnick/) {
-			if (scalar @nicks < 1) {
-				push @nicks, "Nopony";
-			}
-			$mynum=rand(scalar(@nicks));
-			$peepnick=splice(@nicks,$mynum,1);
-		};
-		
-		#reset the nick list.
-		@nicks = ();
-		# Go through the list of known active nicks
-		foreach my $nick ($channel->nicks()) {
-			my $nickname = $nick->{nick};
-			# if they haven't been around for a while...
-			if (defined $nickname && time - $activity{$channame}->{lc($nickname)} <= 600) {
-				# Add them to the list
-				push @nicks,$nickname;
-			}
-		}
-
-		# if there isn't anyone else, then add us just so the list isn't empty.
-		if (scalar @nicks < 1) {
-			push @nicks, "Nopony";
-		}
-
-		$mynum=rand(scalar(@nicks));
-		$peepnick=splice(@nicks,$mynum,1);
-		while ($text =~ s/(^|[^\\])%realpeep/$1$peepnick/) {
-			if (scalar @nicks < 1) {
-				push @nicks, "Nopony";
-			}
-			$mynum=rand(scalar(@nicks));
-			$peepnick=splice(@nicks,$mynum,1);
-		};
-
-		
-		@nicks = ('Spades','spads');
-		$mynum=rand(scalar(@nicks));
-		$peepnick=splice(@nicks,$mynum,1);
 		while ($text =~ s/(^|[^\\])%peep/$1$peepnick/) {
 			if (scalar @nicks < 1) {
 				push @nicks, "Nopony";
@@ -716,7 +669,6 @@ sub dofunsubs {
 			$mynum=rand(scalar(@nicks));
 			$peepnick=splice(@nicks,$mynum,1);
 		};
-
 	}
 
 	# After all of the substitutions are done, swap in the a/ans
@@ -762,19 +714,9 @@ sub gummysay {
 
 sub gummysayraw {
 	my ($server, $channame, $text) = @_;
-	$server->command("msg $channame $text");
-	logtext("Gummybot PRIVMSG $channame: $text");	
+	$server->command("msg $channame Nom! ($text)");
+	logtext("Gummybot PRIVMSG $channame:Nom! ($text)");	
 	return;
-}
-
-sub delayed_gummysay {
-	my ($server, $channame, $delay, $text) = @_;
-	Irssi::timeout_add_once($delay, 'event_delayed_say',[$server, $channame,$text]);
-}
-
-sub delayed_gummydo {
-	my ($server, $channame, $delay, $text) = @_;
-	Irssi::timeout_add_once($delay, 'event_delayed_do',[$server, $channame,$text]);
 }
 
 # flood (type, target, timeout)
@@ -865,10 +807,10 @@ sub cmd_nom {
 
 		if (lc($args) eq lc($server->{nick}) || lc($args) eq "gummy") {
 			if (defined $nomnick) {
-				gummydoraw($server,$target, "at ${nick}'s command the smol hors lets go of $nomnick and latches on to it's own tail to form a loop.");
+				gummydoraw($server,$target, "at ${nick}'s command the serpent lets go of $nomnick and latches on to it's own tail to form Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
 			else {
-				gummydoraw($server,$target, "at ${nick}'s command the smol hors latches on to it's own tail and forms a loop.");
+				gummydoraw($server,$target, "at ${nick}'s command the serpent latches on to it's own tail and forms Oroboros, the beginning and the end. Life and death. A really funky toothless alligator circle at the end of the universe.");
 			}
 			$nomnick = $server->{nick};
 		}
@@ -892,7 +834,7 @@ sub cmd_nom {
 $commands{'say'} = {
 			cmd=>\&cmd_say,
 			short_help=>"<text>",
-			help=>"Causes Spads to say what you ask."
+			help=>"Causes Gummy to say what you ask."
 		};
 sub cmd_say {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -907,7 +849,7 @@ sub cmd_say {
 $commands{'do'} = {
 			cmd=>\&cmd_do,
 			short_help=>"<action>",
-			help=>"Causes Spads to do what you ask."
+			help=>"Causes Gummy to do what you ask."
 		};
 sub cmd_do {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -921,7 +863,7 @@ sub cmd_do {
 $commands{'telesay'} = {
 		cmd=>\&cmd_telesay,
 		short_help=>"<channel> <text>",
-		help=>"Causes Spads to say what you ask on the target channel."
+		help=>"Causes Gummy to say what you ask on the target channel."
 	};
 sub cmd_telesay {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -938,8 +880,7 @@ sub cmd_telesay {
 			gummysay($server, $newtarget, $args);
 		}
 		else {
-			gummysay($server, $target, "Right, I'll get right on that!");
-			gummydoraw($server,$target, "stands perfectly still doing nothing.");
+			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
 
@@ -949,7 +890,7 @@ sub cmd_telesay {
 $commands{'teledo'} = {
 		cmd=>\&cmd_teledo,
 		short_help=>"<channel> <action>",
-		help=>"Causes Spades to do what you ask on the target channel."
+		help=>"Causes Gummy to do what you ask on the target channel."
 	};
 sub cmd_teledo {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -966,10 +907,20 @@ sub cmd_teledo {
 			gummydo($server, $newtarget, $args);
 		}
 		else {
-			gummysay($server, $target, "Right, I'll get right on that!");
-			gummydoraw($server,$target, "stands perfectly still doing nothing.");
+			gummydoraw($server, $target, "blinks. He's not in that channel.");
 		}
 	}
+
+	return;
+}
+
+$commands{'crickets'} = {
+		cmd=>\&cmd_crickets,
+		help=>"Causes Gummy to take notice of the crickets."
+	};
+sub cmd_crickets {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummydoraw($server, $target, "blinks at the sound of the crickets chirping loudly in the channel.");
 
 	return;
 }
@@ -977,7 +928,7 @@ sub cmd_teledo {
 $commands{'coolkids'} = {
 		cmd=>\&cmd_coolkids,
 		short_help=>"[<channel> | awwyeah]",
-		help=>"Causes Spads to hand out sunglasses to <channel> or the current channel and PM you everyone he's see talk in the last 10 minutes. awwyeah causes him to produce that list directly in the channel." 
+		help=>"Causes Gummy to hand out sunglasses to <channel> or the current channel and PM you everyone he's see talk in the last 10 minutes. awwyeah causes him to produce that list directly in the channel." 
 	};
 sub cmd_coolkids {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -1028,34 +979,57 @@ sub docoolkids {
 
 $commands{'getitoff'} = {
 		cmd=>\&cmd_getitoff,
-		help=>"Causes Spads to let got of whoever he's nommed on to."
+		help=>"Causes Gummy to let got of whoever he's nommed on to."
 	};
 sub cmd_getitoff {
 	my ($server, $wind, $target, $nick, $args) = @_;
 	if (defined $nomnick) {
-		gummydoraw($server, $target, "drops cheerfully off of ${nomnick}'s tail.");
+		gummydoraw($server, $target, "drops dejectedly off of ${nomnick}'s tail.");
 		$nomnick = undef;
 	}
 	else {
-		gummydoraw($server, $target, "Right-o sir!");
+		gummydoraw($server, $target, "blinks absently; his already empty maw hanging open slightly.");
 	}	
+
+	return;
+}
+
+$commands{'dance'} = {
+		cmd=>\&cmd_dance,
+		help=>"Causes Gummy to shake his groove thang!"
+	};
+sub cmd_dance {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummydoraw($server, $target, "Records himself dancing on video and uploads it to YouTube at http://www.youtube.com/watch?v=tlnUptFVSGM");
+
+	return;
+}
+
+$commands{'isskynet()'} = {
+		cmd=>\&cmd_isskynet,
+		help=>"Causes Gummy to verify whether he is or is not Skynet."
+	};
+sub cmd_isskynet {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	gummysayraw($server, $target, "89");
+	gummysayraw($server, $target, "IGNORE THAT! There is no Skynet here. I mean, BEEP! I'M A ROBOT!");
 
 	return;
 }
 
 $commands{'rimshot'} = {
 		cmd=>\&cmd_rimshot,
-		help=>"Causes Spads to do a rimshot.."
+		help=>"Causes Gummy to verify whether he is or is not Skynet."
 	};
 sub cmd_rimshot {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	gummysayraw($server, $target, "Don't worry sir! I'm sure that drum was designed to be hit by that car!");
+	gummydoraw($server, $target, "looks blankly at a drum set in the corner.");
 }
 
 $commands{'roll'} = {
 		cmd=>\&cmd_roll,
 		short_help => "<dice> <sides>",
-		help => "Causes Spades to roll <dice> dice with <sides> on them."
+		help => "Causes Gummy to roll <dice> dice with <sides> on them."
 	};
 sub cmd_roll {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -1115,10 +1089,59 @@ sub cmd_choose {
 	return;
 }
 
+$commands{'om'} = {
+		cmd => \&cmd_om,
+		short_help => "[add <text> | nom | skippy]",
+		help =>"Causes Gummy to ponder the universe. Use add to suggest a new contemplation, nom to contemplate the inner wisdom on nom, and skippy to return the wisdom of Specialist Skippy."
+	};
+sub cmd_om {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	my @params = split(/\s+/, $args);
+	if (not @params) {
+		if (not %funstuff) {
+			loadfunstuff();
+		}
+		my @omcache =@{$funstuff{buddha}};
+		my $buddha = $omcache[rand(@omcache)];
+		gummysayraw($server, $target, "Gummybuddha says: $buddha");
+	}
+	elsif (lc($params[0]) eq "add") {
+		if (flood("file","omadd",Irssi::settings_get_time('Gummy_OmAddFloodLimit')/1000)) {
+			# sub out the fun stuff so that the behavior is static.
+			$args = dofunsubs($server, $target, $args);
+
+			my $omadd;
+			open $omadd, ">> ", getdir(Irssi::settings_get_str('Gummy_OmAddFile'));
+			print $omadd "${nick}\@${target}: $args\n";
+			close $omadd;
+			gummysayraw($server,$target,"Your suggestion has been added. Jim will review it and add it as appropriate. Thanks for your contribution!");
+		}
+		else {
+			gummysayraw($server,$target,"Please wait longer before submitting another suggestion. No more than once a minute please.");
+		}
+	}
+	elsif (lc($params[0]) eq "nom") {
+		gummydoraw($server,$target,"meditates on the wisdom of the nom.");
+	}
+	elsif (lc($params[0]) eq "skippy") {
+		if (not %funstuff) {
+			loadfunstuff();
+		}
+		my @omcache =@{$funstuff{skippy}};
+		my $skippy = $omcache[rand(@omcache)];
+		gummysayraw($server, $target, "The wise Skippy said: $skippy");
+	}
+	else {
+		gummydoraw($server,$target,"blinks at you in confusion. Did you mean to nom?");
+	}
+
+	return;
+}
+
 $commands{'autogreet'} = {
 		cmd => \&cmd_autogreet,
 		short_help => "[<greeting>]",
-		help=>"Causes Spades to set your greeting. If you do not provide a greeting he'll erase your current one."
+		help=>"Causes Gummy to set your greeting. If you do not provide a greeting he'll erase your current one."
 	};
 sub cmd_autogreet {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -1143,64 +1166,10 @@ sub cmd_autogreet {
 	return;
 }
 
-my @memo_prompts = (
-	sub {
-		my ($server, $channel, $who, $nick) = @_;
-		gummysay($server, $channel, "Understood sir/miss! I'll deliver this to %inactivepeep straight away!");
-		delayed_gummysay($server, $channel, int(rand(20000)), "Wait. I mean $who. They look the same if you squint just right.");
-	},
-	sub {
-		my ($server, $channel, $who, $nick) = @_;
-		my @choices = ("accidentally swallowing the quill", "the paper bursts into flames", "a rogue squirrel consumes the parchement");
-		my $choice = @choices[rand(scalar @choices)];
-		gummydo($server, $channel, "happily scribbles down the message on a piece of paper, but only gets halfway before $choice.");
-	},
-	sub {
-		my ($server, $channel, $who, $nick) = @_;
-		gummydo($server, $channel, "[Spades has disconnected]");
-		my $delay = int(rand(20000));
-		delayed_gummydo($server, $channel, $delay, "[Spades has joined $channel]");
-		delayed_gummysay($server, $channel, $delay+int(rand(20000)), "Did that go through?");
-	},
-	sub {
-		my ($server, $channel, $who, $nick) = @_;
-		gummydo($server, $channel, "Spades rummages through his saddlebags frantically looking for a writing implement");		
-	}
-);
-my @memo_delivery_prompts = (
-	sub {
-		my ($server, $channel, $nick, $created, $source, $message) = @_;
-		gummysay($server, $channel, "Message for you sir/miss!");
-		gummydo($server, $channel, "[$created] $source: $message");
-		gummysay($server, $channel, "No offense but I’d not put your lips on that were I you. Wait, what were you doing again?");
-	},
-	sub {
-		my ($server, $channel, $nick, $created, $source, $message) = @_;
-		gummysay($server, $channel, "Mister/Mrs $nick? $source just wanted you to know that they're very grateful for your friendship.");
-		delayed_gummysay($server, $channel, int(rand(5000))+5000, "Oh, and $message");
-	},
-	sub {
-		my ($server, $channel, $nick, $created, $source, $message) = @_;
-		my @choices = ("a scroll embedded in the far wall", "a suspicious pile of charcoal in the corner", "a glowing pile of green matter");
-		my $choice = @choices[rand(scalar @choices)];
-		gummydo($server, $channel, "sheepishly indicates to $choice.");
-		gummysay($server, $channel, "Funny story, $nick. This started off as a message from $source that read: $message");
-		delayed_gummysay($server, $channel, int(rand(2000))+2000, "Was that supposed to happen?");		
-	},
-	sub {
-		my ($server, $channel, $nick, $created, $source, $message) = @_;
-		gummydo($server, $channel, "pulls a scroll from his saddlebags and presents it to $nick, beaming. \"$source sent you this heartfelt message!\"");		
-		gummydo($server, $channel, "[$created] The itty bitty kitty committiee: Please say hello to Mr. Hurley Huddleston! http://www.theittybittykittycommittee.com/2017/03/names-for-gray-babies.html");
-		my $delay = int(rand(5000))+5000;
-		delayed_gummysay($server, $channel, $delay, "Wait that's not it.");
-		delayed_gummydo($server, $channel, $delay+int(rand(2000))+2000, "sheepishly passes another scroll that reads: $message");
-	}
-);
-
 $commands{'memo'} = {
 		cmd => \&cmd_memo,
 		short_help => "[!] <target> <text>",
-		help => "Causes Spades to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM. Prefixing the nickname with a - will sent it to the nicks group if they're part of one. If ! is included, deliver on login and nick change too."
+		help => "Causes Gummy to save a memo for <target> and deliver it when he next sees them active. If sent to gummy via PM, the message will be delivered as a PM. Prefixing the nickname with a - will sent it to the nicks group if they're part of one. If ! is included, deliver on login and nick change too."
 	};
 sub cmd_memo {
 	my ($server, $wind, $target, $nick, $args) = @_;
@@ -1249,8 +1218,7 @@ sub cmd_memo {
 
 	# If we found a group to send it to
 	if ($status == 0) {
-		my $prompt = @memo_prompts[rand(scalar @memo_prompts)];
-		$prompt->($server, $target, $who, $nick);
+		gummydoraw($server,$target,"stores the message in his databanks for later delivery to $who or their group.");
 	}
 	else {
 		# Check to see if we've heard from the target in the last week so we
@@ -1264,9 +1232,7 @@ sub cmd_memo {
 			if (defined $activity{$channelname}->{$lcwho}) {
 				# And if so, check to see if we last heard from them in the last week.
 				if (time - $activity{$channelname}->{$lcwho} < 86400 * 7) {
-					my $prompt = @memo_prompts[rand(scalar @memo_prompts)];
-					$prompt->($server, $target, $who, $nick);
-					
+					gummydoraw($server,$target,"stores the message in his databanks for later delivery to $who.");
 					return; # Bail since we found the nick and reported the result.
 				} else {
 					last; # we found the nick but it's stale, give the alternate message.
@@ -1274,8 +1240,7 @@ sub cmd_memo {
 			}
 		}
 		# if we didn't find the nick or it was stale, warn the user
-		my $prompt = @memo_prompts[rand(scalar @memo_prompts)];
-		$prompt->($server, $target, $who, $nick);
+		gummydoraw($server,$target,"hasn't heard from that pony recently, but stores the message in his databanks for later delivery to $who. You should check your spelling to be sure.");
 	}
 	
 	return;
@@ -1502,16 +1467,6 @@ sub cmd_ping {
 	return;
 }
 
-$commands{'test'} = {
-		cmd=>\&cmd_test,
-		help => "Makes me do a thing"
-	};
-sub cmd_test {
-	my ($server, $wind, $target, $nick, $args) = @_;
-	delayed_gummydo($server, $target, 5000, "This happened later.");	
-	return;
-}
-
 $commands{'link'} = {
 		cmd=>\&cmd_link,
 		short_help => "create | join <nick to join> | auth <nick to approve> | leave",
@@ -1668,25 +1623,6 @@ sub link_leave_callback {
 }
 
 $commands{'help'} = {
-		cmd=>\&cmd_spadeshelp,
-		short_help => "[<command>]",
-		help => "Causes Spades to help."
-	};
-sub cmd_spadeshelp {
-	my ($server, $wind, $target, $nick, $args) = @_;
-	my @choices = (
-		"soaking it in turpentine?",
-		"turning it off and on again?",
-		"removing all of the squirrels?",
-		"doing a good deed for somepony today?",
-		"tasting it?",
-		"digging?"
-		);
-	my $choice = @choices[rand(scalar @choices)];
-	gummysay($server,$target,"Have you tried $choice");
-}
-
-$commands{'realhelp'} = {
 		cmd=>\&cmd_help,
 		short_help => "[<command>]",
 		help => "Causes Gummy to emit the list of commands he knows, or information about a specific <command>."
@@ -1842,16 +1778,12 @@ sub deliver_memos {
 				next;
 			}
 
-			# if (!$printed_header) {
-				# gummydoraw($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
-				# $printed_header = 1;
-			# }
+			if (!$printed_header) {
+				gummydoraw($server,$memo_target,"opens his mouth and prints out a tickertape addressed to $nick");
+				$printed_header = 1;
+			}
 
-			#my ($server, $channel, $nick, $created, $source, $message) = @_;
-			my $prompt = @memo_delivery_prompts[rand(scalar @memo_delivery_prompts)];
-			$prompt->($server, $memo_target, $nick, $created, $source, $message);
-			
-			#gummydoraw($server, $memo_target, "[$created] $source: $message");			
+			gummydoraw($server, $memo_target, "[$created] $source: $message");			
 
 			# If it's not a gummy generated memo
 			if ($delivery ne "GCOM") {
@@ -2061,34 +1993,6 @@ sub check_release {
 	return;
 }
 
-my @blink_prompts = (
-	sub {
-		my ($server, $target) = @_;
-		gummysay($server, $target, "I've made all the passwords more secure by adding another twenty six characters on the end, and to be extra safe I didn’t write any of them down!");
-	},
-	sub {
-		my ($server, $target) = @_;
-		gummysay($server, $target, "Welcome welcome %realpeep! I have a memo for you!");
-		delayed_gummysay($server, $target, int(rand(5000))+5000, "Um. I could have sworn it was here a second ago. Hold on.");
-	},
-	sub {
-		my ($server, $target) = @_;
-		gummydo($server, $target, "takes the opportunity to investigate %inactivepeep whilst they're asleep.");
-	},
-	sub {
-		my ($server, $target) = @_;
-		gummydo($server, $target, "hiccups gently.");
-	},
-	sub {
-		my ($server, $target) = @_;
-		gummydo($server, $target, "Spades kneads the ground thoughtfully, in case it’s going to get any softer.");
-	},
-	sub {
-		my ($server, $target) = @_;
-		gummysay($server, $target, "Have you said something nice to %realpeep today?");
-	},
-);
-
 # do_blink()
 # Causes gummy to blink, thrash, drop, etc. if appropriate during lulls in activity.
 sub do_blink() {
@@ -2107,8 +2011,13 @@ sub do_blink() {
 					}
 				}
 				if (Irssi::settings_get_bool('Gummy_Blink')) {
-					my $prompt = @blink_prompts[rand(scalar @blink_prompts)];
-					$prompt->($_->{server}, $_->{name});
+					if (rand(1) < .9) {
+						gummydoraw($_->{server},$_->{name},"blinks as he looks about the channel.");
+					}
+					else {
+						gummysayraw($_->{server},$_->{name},"Crickets detected! Arming vaporization cannon... Firing in 3... 2... 1...");
+						gummydoraw($_->{server},$_->{name},"fires a blinding laser, vaporizing a single cricket simply minding his own business in a corner of the channel.");
+					}
 				}
 			}
 			$lastblink=time;
@@ -2170,7 +2079,7 @@ sub event_privmsg {
 		my $mynick = lc($server->{nick});
 		my ($prefix, $cmd, $args) = split(/\s+/,$text,3);
 		$prefix = lc($prefix);
-		my @prefixlist = ('!gb','!gummy','!gummybot', '!spades', '!sb', '!spads', $mynick . ":", $mynick . ","); # Build up the prefix list.
+		my @prefixlist = ('!gb','!gummy','!gummybot', $mynick . ":", $mynick . ","); # Build up the prefix list.
 
 
 		if (lc($target) eq $mynick) { # If this is a direct message
@@ -2401,34 +2310,6 @@ sub event_nick_kick {
 	if ($@) {
 		logtext("ERROR","event_nick_kick",$@);
 		print("GUMMY CRITICAL: event_nick_kick, $@");
-	}
-	
-	return;
-}
-
-sub event_delayed_say {
-	my ($data) = @_;
-	my ($server, $channel, $text) = @{$data};
-	eval {
-		gummysay($server,$channel,$text);
-	};
-	if ($@) {
-		logtext("ERROR","event_delayed_say",$@);
-		print("GUMMY CRITICAL: event_delayed_say, $@");
-	}
-	
-	return;
-}
-
-sub event_delayed_do {
-	my ($data) = @_;
-	my ($server, $channel, $text) = @{$data};
-	eval {
-		gummydo($server,$channel,$text);
-	};
-	if ($@) {
-		logtext("ERROR","event_delayed_do",$@);
-		print("GUMMY CRITICAL: event_delayed_do, $@");
 	}
 	
 	return;
