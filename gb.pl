@@ -674,6 +674,10 @@ sub dofunsubs {
 	# After all of the substitutions are done, swap in the a/ans
 	$text =~ s/%an([\s]+[aeiou])/an$1/ig;
 	$text =~ s/%an([\s]+[^aeiou])/a$1/ig;
+
+	$text =~ s/([^s])%'s/$1's/ig;
+	$text =~ s/[s]%'s/s'/ig;
+
 	if ($count == 100) {
 		print "Bailed from funsubs. Too many subs or recursion!";
 	}
