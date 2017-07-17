@@ -1770,6 +1770,13 @@ sub deliver_memos {
 			my ($id, $destination, $source, $delivery, $created, $message) = @memo;
 
 			my $memo_target = $target;
+
+			# If a delivery type isn't specified, set it to nothing to avoid warnings about
+			# comparisons against undef.
+			if (!defined $delivery) {
+				$delivery="";
+			}
+
 			if ($delivery eq "PRIV" || $delivery eq "PAGR") {
 				$memo_target = $nick;
 			} elsif ($delivery eq "GCOM") {
