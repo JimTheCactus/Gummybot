@@ -761,8 +761,8 @@ sub floodreset {
 # nickflood(nick,timeout)
 # Convience function for checking if a nick is spamming. Calls flood("nick",nick,timeout)
 sub nickflood {
-	my ($timeout) = @_;
-	return flood("nick",$timeout);
+	my ($nick, $timeout) = @_;
+	return flood("nick", $nick, $timeout);
 }
 
 #
