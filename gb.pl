@@ -1925,7 +1925,7 @@ sub deliver_reminders {
 # Updates the alias table to track a change from old nick to new nick. Pass an undef to old nick if the user is joining.
 sub add_alias {
 	my ($oldnick, $newnick) = @_;
-	my $lcold = lc($oldnick);
+	my $lcold = ""; # Preinitialize the old nick to a blank.
 	my $lcnew = lc($newnick);
 
 
@@ -1933,6 +1933,11 @@ sub add_alias {
 		if (defined($aliases{$lcnew})) { #and we know about them already
 			return; # Bail (i.e. re-attach to old aliases.)
 		}
+	}
+
+	# Check if we have an actual old nick and if so, get the lower case version.
+	if (defined $oldnick) {
+		$lcold = lc($oldnick);
 	}
 
 	my @blankarray = ();
