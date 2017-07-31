@@ -50,7 +50,6 @@ my %aliases; # Holds the list of known aliases for current nicknames.
 my %manual_aliases; # Hash of list references; holds known aliases.
 my $database; # Holds the handle to our database
 my $database_prefix; # Holds the table prefix.
-my %pendingnicklinks; # Pending nick linkings.
 
 # Authorization requests must be a hashtable with the following parameters:
 # 'tag' - The timeout tag used to timeout an auth request.
@@ -326,6 +325,15 @@ sub connect_to_database {
 			") 
 			or die "Failed to make nickgroup table\n" . DBI->errstr;
 
+		$database->do("CREATE TABLE IF NOT EXISTS ". $database_prefix ."nickgrouprequests
+				(Nick CHAR(30) PRIMARY KEY,
+				NickGroup CHAR(31) NOT NULL,
+				INDEX (Nick), INDEX (NickGroup)
+				)
+				ENGINE = MEMORY
+			") 
+			or die "Failed to make nickgroup request table\n" . DBI->errstr;
+
 	};
 	if ($@) {
 		print $@;
@@ -417,6 +425,61 @@ sub remove_nicklink {
 		or die DBI->errstr;
 
 	return;
+}
+
+sub create_nicklink_request {
+	my ($nick,$groupid) = @_;
+	$nick = lc($nick);
+
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+	my $group_query = $database->prepare_cached("INSERT INTO " . $database_prefix . "nickgrouprequests
+				(Nick, Nickgroup) VALUES(?,?)
+				ON DUPLICATE KEY
+				UPDATE NickGroup=?")
+		or die DBI->errstr;
+	$group_query->execute($nick,$groupid,$groupid)
+		or die DBI->errstr;
+
+	return;
+}
+
+sub accept_nicklink_request {
+	my ($nick,$groupid) = @_;
+	$nick = lc($nick);
+
+	print "Adding $nick to $groupid";
+	# add the new link
+	add_or_update_nicklink($nick,$groupid);
+
+	print "Scrubbing $nick and $groupid from requests";
+	# and cleanup the request
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+	my $group_query = $database->prepare_cached("DELETE FROM " . $database_prefix . "nickgrouprequests WHERE Nick=? AND NickGroup=?")
+		or die DBI->errstr;
+	$group_query->execute($nick,$groupid)
+		or die DBI->errstr;
+
+	return;
+}
+
+sub get_nickgroup_request_from_nick {
+	my ($nick, $undefifungrouped) = @_;
+	# Connect to the database if we haven't already.
+	connect_to_database() or die("Couldn't open database. Check connection settings.");
+
+	my $group_query = $database->prepare_cached("SELECT NickGroup FROM " . $database_prefix . "nickgrouprequests WHERE Nick=?")
+		or die DBI->errstr;
+	$group_query->execute(lc($nick))
+		or die DBI->errstr;
+	if (my @nickgroup = $group_query->fetchrow_array()) {
+		return $nickgroup[0];
+	}
+	elsif ($undefifungrouped) {
+		return;
+	}
+	else {
+		return $nick;
+	}	
 }
 
 
@@ -1523,14 +1586,15 @@ sub cmd_link {
 
 		# get the nick we want to join
 		my $targetnick = lc($params[0]);
+
 		# get the group it's part of.
-		my $groupid = $pendingnicklinks{$targetnick};
+		my $groupid = get_nickgroup_request_from_nick($targetnick,1);
 
 		if (!$groupid) {
 			gummydoraw($server,$target,"blinks with a confused look. That nick does not have a pending request to join.");
 			return;
 		}
-		if ($groupid != $mygroup) {
+		if ($groupid ne $mygroup) {
 			gummydoraw($server,$target,"blinks with a confused look. That nick is not asking to join your group.");
 			return;
 		}
@@ -1572,11 +1636,12 @@ sub link_creategroup_callback {
 
 # Data here is a hash reference with server, target, id, and joinnick.
 # joinnick is the nick the user asked to join. We're trying to hide the internal representation of nick groups.
+#bookmark
 sub link_asktojoin_callback {
 	my ($status, $nick, $data) = @_;
 
 	if ($status == 3) {
-		$pendingnicklinks{$nick} = $data->{id};
+		create_nicklink_request($nick, $data->{id});
 		gummydoraw($data->{server},$data->{target},"creates a request to join " . $data->{joinnick} ."'s nick group.");
 	}
 	elsif ($status < 0) {
@@ -1595,8 +1660,7 @@ sub link_auth_callback {
 	my ($status, $nick, $data) = @_;
 
 	if ($status == 3) {
-		add_or_update_nicklink($data->{authnick},$pendingnicklinks{$data->{authnick}});
-		delete $pendingnicklinks{$data->{authnick}};
+		accept_nicklink_request($data->{authnick}, $data->{id});
 		gummydoraw($data->{server},$data->{target},"joins " . $data->{authnick} ." to your nick group.");
 	}
 	elsif ($status < 0) {
