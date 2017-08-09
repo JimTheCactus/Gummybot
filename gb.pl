@@ -1524,12 +1524,7 @@ $commands{'ping'} = {
 	};
 sub cmd_ping {
 	my ($server, $wind, $target, $nick, $args) = @_;
-	if (lc($target) eq lc($nick)) {
-		gummydoraw($server, $target, "pongs.");
-	}
-	else {
-		gummydoraw($server, $target, "reminds you to only send this command in a PM.");
-	}
+	gummydoraw($server, $target, "pongs.");
 	
 	return;
 }
