@@ -1352,6 +1352,39 @@ sub add_memo {
 	return $status
 }
 
+$commands{'who'} = {
+		cmd => \&cmd_who,
+		help => "Emits the /who list."
+	};
+sub cmd_who {
+	my ($server, $wind, $target, $nick, $args) = @_;
+	if (!$server->ischannel($target)) {
+		gummydo($server, $target, "blinks. This command only makes sense in a channel.");
+		return;
+	}
+
+	my @result=();
+	my $channel = $server->channel_find($target);
+	foreach $nick ($channel->nicks()) {
+		my $fullnick = $nick->{nick};
+		my $flag = " ";
+		if ($nick->{op}) {
+			$flag = "@";
+		} elsif ($nick->{halfop}) {
+			$flag = "%";
+		} elsif ($nick->{voice}) {
+			$flag = "+";
+		}
+
+		my $afk="";
+		if ($nick->{gone}) {
+			$afk = "!AWAY";
+		}
+		push @result, "$flag$fullnick$afk";
+	}
+	gummydoraw($server, $target, "points out: " . join(", ",@result));
+}
+
 $commands{'whoswho'} = {
 		cmd => \&cmd_whoswho,
 		help => "Returns a link to the list of known Tumblrs."
