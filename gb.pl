@@ -2075,13 +2075,13 @@ sub do_greet {
 		$greetnick=lc($nick);
 		if (exists $greets{$greetnick}) {
 			my $greet = $greets{$greetnick};
+			my $fullgreet = dofunsubs($server, $target, $greet);
 			# If we've been asked to redirect
 			if (Irssi::settings_get_bool('Gummy_AutogreetRedirect')) {
-				my $fullgreet = dofunsubs($server, $target, $greet);
 				my $cmd_text = "msg " . Irssi::settings_get_str('Gummy_AutogreetRedirectTarget') . " !gbrelay $target [$dispnick] $fullgreet";
 				$server->command($cmd_text);
 			} else {
-				gummydoraw($server,$target, "[$dispnick] $greet");
+				gummydoraw($server,$target, "[$dispnick] $fullgreet");
 			}
 		}
 	}
